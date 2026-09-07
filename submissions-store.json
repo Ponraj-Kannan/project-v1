@@ -1,0 +1,142 @@
+[
+  {
+    "id": "local-sub-1788171433643-i3xh",
+    "user_id": "user-ponraj_faceprep_edunetwork_in",
+    "question_id": "44444444-4444-4444-4444-444444444444",
+    "cases_passed": 10,
+    "total_cases": 10,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T10:17:13.643Z"
+  },
+  {
+    "id": "local-sub-1788171432978-dfxv",
+    "user_id": "user-ponraj_faceprep_edunetwork_in",
+    "question_id": "33333333-3333-3333-3333-333333333333",
+    "cases_passed": 5,
+    "total_cases": 5,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T10:17:12.978Z"
+  },
+  {
+    "id": "local-sub-1788170827117-llf3",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "44444444-4444-4444-4444-444444444444",
+    "cases_passed": 10,
+    "total_cases": 10,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T10:07:06.792Z"
+  },
+  {
+    "id": "local-sub-1788170482844-9rn9",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "44444444-4444-4444-4444-444444444444",
+    "cases_passed": 9,
+    "total_cases": 10,
+    "status": "partial",
+    "submitted_code": null,
+    "created_at": "2026-08-31T10:01:12.343Z"
+  },
+  {
+    "id": "local-sub-1788170434206-pzgo",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "44444444-4444-4444-4444-444444444444",
+    "cases_passed": 10,
+    "total_cases": 10,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T10:00:33.987Z"
+  },
+  {
+    "id": "local-sub-1788170415438-nlpt",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "44444444-4444-4444-4444-444444444444",
+    "cases_passed": 10,
+    "total_cases": 10,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T10:00:11.642Z"
+  },
+  {
+    "id": "local-sub-1788170248681-f1tu",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "44444444-4444-4444-4444-444444444444",
+    "cases_passed": 10,
+    "total_cases": 10,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T09:57:18.664Z"
+  },
+  {
+    "id": "local-sub-1788166982392-j6gc",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "local-q-1787917484871",
+    "cases_passed": 5,
+    "total_cases": 5,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T09:03:02.392Z"
+  },
+  {
+    "id": "local-sub-1788166853269-7no6",
+    "user_id": "b8c0af36-0a3b-462c-908a-1f23d67d662f",
+    "question_id": "local-q-1787917484871",
+    "cases_passed": 5,
+    "total_cases": 5,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-31T09:00:53.269Z"
+  },
+  {
+    "id": "local-sub-1787917484872-afe8",
+    "user_id": "local-user-2",
+    "question_id": "local-q-1787917484871",
+    "cases_passed": 5,
+    "total_cases": 5,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-28T11:44:44.872Z"
+  },
+  {
+    "id": "local-sub-1787917471853-2d02",
+    "user_id": "local-user-2",
+    "question_id": "11111111-1111-1111-1111-111111111111",
+    "cases_passed": 5,
+    "total_cases": 5,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-28T11:44:31.853Z"
+  },
+  {
+    "id": "local-sub-1787917445150-xi5k",
+    "user_id": "user-student_example_com",
+    "question_id": "22222222-2222-2222-2222-222222222222",
+    "cases_passed": 0,
+    "total_cases": 6,
+    "status": "failed",
+    "submitted_code": null,
+    "created_at": "2026-08-28T11:44:05.150Z"
+  },
+  {
+    "id": "local-sub-1787917445150-zrlz",
+    "user_id": "user-student_example_com",
+    "question_id": "22222222-2222-2222-2222-222222222222",
+    "cases_passed": 3,
+    "total_cases": 6,
+    "status": "partial",
+    "submitted_code": null,
+    "created_at": "2026-08-28T11:44:05.150Z"
+  },
+  {
+    "id": "local-sub-1787917445150-7wnj",
+    "user_id": "user-student_example_com",
+    "question_id": "11111111-1111-1111-1111-111111111111",
+    "cases_passed": 5,
+    "total_cases": 5,
+    "status": "passed",
+    "submitted_code": null,
+    "created_at": "2026-08-28T11:44:05.150Z"
+  }
+]
