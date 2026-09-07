@@ -1010,9 +1010,13 @@ transition: slide-up
 <Slide question-slug="${q.slug}" />`
     })
 
-    const markdownContent = slideEntries.join('\n\n') + '\n'
-    fs.writeFileSync(slidesMarkdownPath, markdownContent, 'utf8')
-    console.log(`[Supabase Lib] Successfully synced ${questions.length} question slide(s) from Supabase to ${slidesMarkdownPath}`)
+    try {
+      const markdownContent = slideEntries.join('\n\n') + '\n'
+      fs.writeFileSync(slidesMarkdownPath, markdownContent, 'utf8')
+      console.log(`[Supabase Lib] Successfully synced ${questions.length} question slide(s) from Supabase to ${slidesMarkdownPath}`)
+    } catch (writeErr) {
+      console.warn('[Supabase Lib] Filesystem is read-only (expected on Vercel serverless functions):', writeErr.message)
+    }
   } catch (err) {
     console.warn('[Supabase Lib] Could not sync question slides to file:', err.message)
   }

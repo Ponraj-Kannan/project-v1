@@ -137,6 +137,11 @@
 
             <!-- Structured Content Sections -->
             <div class="edu-content-flow">
+              <!-- Question Removed / Inactive Notification -->
+              <div v-if="!isLoadingQuestion && !loadedQuestionData && (!props.contents || props.contents.length === 0)" class="edu-info-banner edu-info-banner--highlight" style="border-left-color: #ef4444; margin-bottom: 14px;">
+                <b>Question Not Found:</b> This question has been deleted or is inactive in the Supabase database.
+              </div>
+
               <!-- Task / Problem Description (No TASK label) -->
               <div v-if="parsedProblem.task" class="edu-section-block">
                 <div class="edu-prose" v-html="parsedProblem.task"></div>
@@ -594,10 +599,15 @@ async function fetchQuestionData() {
         authState.activeQuestionSlug = data.question.slug || props.questionSlug || '';
         authState.activeQuestionId = data.question.id || props.questionId || '';
         authState.activeQuestionTitle = data.question.title || effectiveTitle.value || '';
+      } else {
+        loadedQuestionData.value = null;
       }
+    } else {
+      loadedQuestionData.value = null;
     }
   } catch (err) {
     console.warn('[Slide] Could not fetch question details:', err);
+    loadedQuestionData.value = null;
   } finally {
     isLoadingQuestion.value = false;
   }
