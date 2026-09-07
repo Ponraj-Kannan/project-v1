@@ -14,6 +14,7 @@
     "build:01": "node scripts/slidev-deck.mjs build src/01-introduction-to-java.md",
     "seed:questions": "node scripts/seed-questions.mjs",
     "seed:users": "node scripts/seed-supabase.mjs",
+    "sync:slides": "node -e \"import('./api/_lib/supabase.js').then(m => m.syncQuestionSlidesToFile())\"",
     "new:deck": "node scripts/create-slide-deck.mjs",
     "new:session": "node templates/generators/new-session.js",
     "template:generate": "node templates/generators/new-session.js",

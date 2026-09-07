@@ -9,18 +9,37 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import dotenv from 'dotenv'
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+export function getProjectRoot() {
+  if (fs.existsSync(path.join(process.cwd(), 'package.json'))) {
+    return process.cwd()
+  }
+  if (fs.existsSync(path.resolve(process.cwd(), '..', 'package.json'))) {
+    return path.resolve(process.cwd(), '..')
+  }
+  try {
+    const fileDir = path.dirname(new URL(import.meta.url).pathname)
+    return path.resolve(fileDir, '..', '..')
+  } catch (e) {
+    return process.cwd()
+  }
+}
+
+const projectRoot = getProjectRoot()
+dotenv.config({ path: path.join(projectRoot, '.env') })
 
 let supabaseInstance = null
 
 export function getSupabaseClient() {
-  if (!supabaseUrl || !supabaseServiceKey) {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
+  if (!url || !key) {
     return null
   }
   if (!supabaseInstance) {
-    supabaseInstance = createClient(supabaseUrl, supabaseServiceKey, {
+    supabaseInstance = createClient(url, key, {
       auth: {
         persistSession: false,
         autoRefreshToken: false
@@ -31,9 +50,9 @@ export function getSupabaseClient() {
 }
 
 // ── Local Fallback Store Paths ────────────────────────────────────────────────
-const localFilePath = path.join(process.cwd(), 'allowed-emails.json')
-const localQuestionsPath = path.join(process.cwd(), 'questions-store.json')
-const localSubmissionsPath = path.join(process.cwd(), 'submissions-store.json')
+const localFilePath = path.join(projectRoot, 'allowed-emails.json')
+const localQuestionsPath = path.join(projectRoot, 'questions-store.json')
+const localSubmissionsPath = path.join(projectRoot, 'submissions-store.json')
 
 // ── Default Seed Questions ────────────────────────────────────────────────────
 const DEFAULT_QUESTIONS = [
@@ -427,6 +446,7 @@ export async function getQuestions({ includeInactive = false } = {}) {
         .from('questions')
         .select('*')
         .order('display_order', { ascending: true })
+        .order('created_at', { ascending: true })
 
       if (!includeInactive) {
         query = query.eq('is_active', true)
@@ -436,11 +456,13 @@ export async function getQuestions({ includeInactive = false } = {}) {
 
       if (error) {
         console.error('[Supabase Lib] getQuestions error:', error.message)
+        return []
       } else if (Array.isArray(data)) {
         return data
       }
     } catch (err) {
       console.error('[Supabase Lib] getQuestions failed:', err.message)
+      return []
     }
   }
 
@@ -470,11 +492,13 @@ export async function getQuestionByIdOrSlug(idOrSlug) {
 
       if (error) {
         console.error('[Supabase Lib] getQuestionByIdOrSlug error:', error.message)
+        return null
       } else {
         return data || null
       }
     } catch (err) {
       console.error('[Supabase Lib] getQuestionByIdOrSlug failed:', err.message)
+      return null
     }
   }
 
@@ -961,7 +985,7 @@ export async function syncQuestionSlidesToFile() {
   try {
     const questions = await getQuestions({ includeInactive: false })
 
-    const slidesMarkdownPath = path.join(process.cwd(), 'src', 'slides', 'arrays', 'main.md')
+    const slidesMarkdownPath = path.join(projectRoot, 'src', 'slides', 'arrays', 'main.md')
     if (!fs.existsSync(path.dirname(slidesMarkdownPath))) {
       fs.mkdirSync(path.dirname(slidesMarkdownPath), { recursive: true })
     }
@@ -970,6 +994,13 @@ export async function syncQuestionSlidesToFile() {
       fs.writeFileSync(slidesMarkdownPath, '---\ntransition: slide-up\n---\n\n<Slide />\n', 'utf8')
       return
     }
+
+    // Stable sort by display_order, then created_at
+    questions.sort((a, b) => {
+      const orderDiff = (a.display_order || 0) - (b.display_order || 0)
+      if (orderDiff !== 0) return orderDiff
+      return (a.created_at || '').localeCompare(b.created_at || '')
+    })
 
     const slideEntries = questions.map((q) => {
       return `---

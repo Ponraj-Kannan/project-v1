@@ -2,9 +2,11 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import process from 'node:process'
 import fs from 'node:fs'
+import dotenv from 'dotenv'
 
 const [, , action = 'dev', deckArg, ...extraArgs] = process.argv
 const root = process.cwd()
+dotenv.config({ path: path.join(root, '.env') })
 const defaultDeck = 'src/01-introduction-to-java.md'
 const deck = deckArg || process.env.SLIDEV_DECK || defaultDeck
 const resolvedDeck = path.isAbsolute(deck) ? deck : path.join(root, deck)

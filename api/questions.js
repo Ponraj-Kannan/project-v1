@@ -16,7 +16,8 @@ import {
   deleteQuestion,
   reorderQuestions,
   findUserByEmail,
-  verifyGoogleToken
+  verifyGoogleToken,
+  syncQuestionSlidesToFile
 } from './_lib/supabase.js'
 
 async function authenticateRequester(req) {
@@ -74,6 +75,8 @@ export default async function handler(req, res) {
       }
 
       const questions = await getQuestions({ includeInactive })
+      syncQuestionSlidesToFile().catch(err => console.warn('[api/questions] sync warning:', err.message))
+
       return res.status(200).json({
         count: questions.length,
         questions

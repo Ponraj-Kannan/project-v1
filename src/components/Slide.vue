@@ -537,6 +537,19 @@ async function fetchQuestionData() {
   }
   if (props.testCases && props.testCases.length > 0 && props.starterCode) {
     isLoadingQuestion.value = false;
+    const qLang = props.language || 'java';
+    const qKey = `oc-code-${qLang}-${props.questionSlug || props.questionId}`;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(qKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.code && !parsed.code.includes('HelloWorld') && !parsed.code.includes('Hello, World!')) {
+            editorCode.value = parsed.code;
+          }
+        } catch (e) {}
+      }
+    }
     return;
   }
 
