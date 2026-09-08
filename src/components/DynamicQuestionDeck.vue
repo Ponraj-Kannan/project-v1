@@ -263,18 +263,33 @@ function handleKeyNavigation(e) {
   }
 }
 
+watch(currentQuestion, (q) => {
+  if (q) {
+    authState.activeQuestionSlug = q.slug || ''
+    authState.activeQuestionId = q.id || ''
+    authState.activeQuestionTitle = q.title || ''
+  }
+}, { immediate: true })
+
 watch(() => authState.isLoggedIn, () => {
   fetchProgress()
 })
+
+async function onQuestionsUpdated() {
+  await fetchQuestions()
+  await fetchProgress()
+}
 
 onMounted(async () => {
   await fetchQuestions()
   await fetchProgress()
   window.addEventListener('keydown', handleKeyNavigation)
+  window.addEventListener('questions-updated', onQuestionsUpdated)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyNavigation)
+  window.removeEventListener('questions-updated', onQuestionsUpdated)
 })
 </script>
 

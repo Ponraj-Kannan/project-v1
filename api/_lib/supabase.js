@@ -982,10 +982,17 @@ export async function getUserProgress({ userId, userEmail }) {
  * ensuring each active question in Supabase has its own dedicated slide.
  */
 export async function syncQuestionSlidesToFile() {
+  // Option 1: DynamicQuestionDeck renders questions dynamically at runtime.
+  // Markdown file writing is disabled unless FORCE_SYNC_SLIDES === 'true'.
+  if (process.env.FORCE_SYNC_SLIDES !== 'true') {
+    return
+  }
+
   try {
     const questions = await getQuestions({ includeInactive: false })
 
     const slidesMarkdownPath = path.join(projectRoot, 'src', 'slides', 'arrays', 'main.md')
+
     if (!fs.existsSync(path.dirname(slidesMarkdownPath))) {
       fs.mkdirSync(path.dirname(slidesMarkdownPath), { recursive: true })
     }

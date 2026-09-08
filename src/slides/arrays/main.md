@@ -1,1 +1,5 @@
+---
+transition: slide-up
+---
 
+<DynamicQuestionDeck />

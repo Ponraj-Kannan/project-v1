@@ -200,6 +200,13 @@ function syncFromSamples() {
   setTimeout(() => { successMessage.value = '' }, 2500)
 }
 
+// ── Broadcast questions update event to DynamicQuestionDeck ────────────────
+function notifyQuestionsUpdated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('questions-updated'))
+  }
+}
+
 // ── Fetch Questions for Management Tab ────────────────────────────────────────
 async function fetchQuestions() {
   isLoadingQuestions.value = true
@@ -386,8 +393,9 @@ async function saveQuestion() {
       successMessage.value = `Question "${payload.title}" created successfully and appended to the course deck!`
     }
     
-    // Refresh question list
+    // Refresh question list and notify dynamic deck
     await fetchQuestions()
+    notifyQuestionsUpdated()
 
     // Reset form after short delay
     setTimeout(() => {
@@ -451,6 +459,7 @@ async function moveQuestion(index, direction) {
 
     successMessage.value = 'Question order updated and synchronized!'
     setTimeout(() => { successMessage.value = '' }, 2500)
+    notifyQuestionsUpdated()
   } catch (err) {
     errorMessage.value = err.message || 'Failed to save question order.'
     setTimeout(() => { errorMessage.value = '' }, 3000)
@@ -511,6 +520,7 @@ async function confirmDeleteQuestion() {
     setTimeout(() => { successMessage.value = '' }, 3000)
 
     await fetchQuestions()
+    notifyQuestionsUpdated()
   } catch (err) {
     errorMessage.value = err.message || 'Failed to delete question.'
   } finally {

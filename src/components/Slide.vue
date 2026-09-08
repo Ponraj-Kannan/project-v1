@@ -406,16 +406,17 @@ const effectiveContents = computed(() => {
   return [];
 });
 const effectiveTestCases = computed(() => {
-  if (props.testCases && props.testCases.length > 0) {
-    return props.testCases;
-  }
-  if (loadedQuestionData.value?.test_cases && loadedQuestionData.value.test_cases.length > 0) {
-    return loadedQuestionData.value.test_cases.map((tc, idx) => ({
+  const rawList = (props.testCases && props.testCases.length > 0)
+    ? props.testCases
+    : (loadedQuestionData.value?.test_cases || []);
+
+  if (rawList && rawList.length > 0) {
+    return rawList.map((tc, idx) => ({
       id: tc.id || idx + 1,
       name: tc.name || `Case ${idx + 1}`,
       input: tc.input || tc.stdin || '',
-      expectedOutput: tc.expected_output || tc.expectedOutput || tc.output || '',
-      isHidden: !!(tc.is_hidden || tc.isHidden)
+      expectedOutput: tc.expectedOutput ?? tc.expected_output ?? tc.output ?? '',
+      isHidden: !!(tc.isHidden ?? tc.is_hidden)
     }));
   }
   return [];
