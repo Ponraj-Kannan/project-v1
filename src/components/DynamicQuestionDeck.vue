@@ -16,49 +16,15 @@
 
         <div class="deck-nav-divider"></div>
 
-        <!-- Clean Breadcrumb Navigation -->
-        <nav class="deck-breadcrumbs" aria-label="Breadcrumb">
-          <span class="deck-crumb">Practice</span>
-          <span class="deck-crumb-sep">/</span>
-          <span class="deck-crumb">{{ (currentQuestion?.language || 'JAVA').toUpperCase() }}</span>
-          <span class="deck-crumb-sep">/</span>
-          <span class="deck-crumb deck-crumb--active">{{ currentQuestion?.topic || 'Practice Problem' }}</span>
-        </nav>
-
-        <div class="deck-nav-divider"></div>
-
-        <!-- Question Pills / Stepper -->
-        <div class="question-pills-list">
-          <button
-            v-for="(q, idx) in questions"
-            :key="q.id || idx"
-            class="question-pill"
-            :class="{
-              'question-pill--active': currentQuestionIndex === idx,
-              'question-pill--passed': getQuestionStatus(q.id) === 'passed',
-              'question-pill--partial': getQuestionStatus(q.id) === 'partial',
-              'question-pill--failed': getQuestionStatus(q.id) === 'failed'
-            }"
-            @click="selectQuestion(idx)"
-            :title="`${q.title} (${q.difficulty || 'Easy'})`"
-          >
-            <span class="pill-status-dot" :class="`pill-status-dot--${getQuestionStatus(q.id)}`"></span>
-            <span class="pill-number">Q{{ idx + 1 }}</span>
-            <span class="pill-title">{{ q.title }}</span>
-          </button>
+        <!-- Topic Display -->
+        <div class="deck-topic-badge">
+          <span class="deck-topic-text">{{ currentQuestion?.topic || 'Arrays' }}</span>
         </div>
       </div>
 
       <div class="deck-nav-right">
         <!-- Metadata -->
         <div class="deck-meta-group">
-          <div class="deck-meta-item">
-            <span class="deck-meta-label">Score</span>
-            <span class="deck-meta-val">{{ currentQuestion?.score || 10 }} pts</span>
-          </div>
-
-          <div class="deck-meta-divider"></div>
-
           <!-- Progress Summary -->
           <div class="deck-meta-item" v-if="questions.length > 0">
             <span class="deck-meta-label">Solved</span>
@@ -66,6 +32,27 @@
             <span class="deck-percent">({{ completionPercent }}%)</span>
           </div>
         </div>
+
+        <div class="deck-nav-divider"></div>
+
+        <!-- Custom Question Picker Button (Appears after questions solved) -->
+        <button
+          class="deck-custom-btn"
+          :class="{ 'deck-custom-btn--active': isCustomModalOpen }"
+          @click="toggleCustomModal"
+          title="Pick a custom question from the list"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="deck-custom-icon">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+          </svg>
+          <span class="deck-custom-text">Custom</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="deck-chevron-icon" :class="{ 'deck-chevron-icon--open': isCustomModalOpen }">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
 
         <div class="deck-nav-divider"></div>
 
@@ -84,7 +71,7 @@
             class="deck-step-btn"
             :disabled="currentQuestionIndex <= 0"
             @click="prevQuestion"
-            title="Previous Question (Alt+Left)"
+            title="Previous Question (Left Arrow)"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="deck-arrow-svg">
               <polyline points="15 18 9 12 15 6"/>
@@ -96,7 +83,7 @@
             class="deck-step-btn deck-step-btn--primary"
             :disabled="currentQuestionIndex >= questions.length - 1"
             @click="nextQuestion"
-            title="Next Question (Alt+Right)"
+            title="Next Question (Right Arrow)"
           >
             <span>Next</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="deck-arrow-svg">
@@ -137,7 +124,7 @@
         :contents="currentQuestion.contents || []"
         :test-cases="currentQuestion.test_cases || []"
         :language="currentQuestion.language || 'java'"
-        :starter-code="currentQuestion.starter_code || ''"
+        :starter-code="''"
         :task="currentQuestion.task || ''"
         :input-format="currentQuestion.input_format || ''"
         :constraints="currentQuestion.constraints || ''"
@@ -145,6 +132,69 @@
         :explanation="currentQuestion.explanation || ''"
       />
     </div>
+
+    <!-- ── Custom Question Selection Modal (Teleported to body to avoid overflow clipping) ── -->
+    <Teleport to="body">
+      <Transition name="custom-modal-fade">
+        <div v-if="isCustomModalOpen" class="custom-modal-overlay" @click.self="isCustomModalOpen = false">
+          <div class="custom-modal-card">
+            <!-- Modal Header -->
+            <div class="custom-modal-header">
+              <div class="custom-modal-header-left">
+                <div class="custom-modal-icon-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 class="custom-modal-title">Select Question</h3>
+                  <p class="custom-modal-subtitle">Pick any problem to practice &bull; {{ solvedCount }} of {{ questions.length }} solved</p>
+                </div>
+              </div>
+              <button class="custom-modal-close-btn" @click="isCustomModalOpen = false" title="Close (Esc)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Modal Question List -->
+            <div class="custom-modal-list">
+              <div
+                v-for="(q, idx) in questions"
+                :key="q.id || idx"
+                class="custom-modal-item"
+                :class="{ 'custom-modal-item--active': currentQuestionIndex === idx }"
+                @click="selectAndClose(idx)"
+              >
+                <div class="custom-modal-item-left">
+                  <span class="custom-item-num">Q{{ idx + 1 }}</span>
+                  <div class="custom-item-details">
+                    <span class="custom-item-title">{{ q.title }}</span>
+                    <span class="custom-item-topic">{{ q.topic || 'Practice Problem' }} &bull; {{ (q.language || 'Java').toUpperCase() }}</span>
+                  </div>
+                </div>
+
+                <div class="custom-modal-item-right">
+                  <span
+                    class="status-pill"
+                    :class="`status-pill--${getQuestionStatus(q.id)}`"
+                  >
+                    <span class="status-pill-dot"></span>
+                    <span>{{ getQuestionStatus(q.id) === 'passed' ? 'Solved' : 'Not Solved' }}</span>
+                  </span>
+                  <span v-if="currentQuestionIndex === idx" class="current-label">Current</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -158,6 +208,7 @@ const currentQuestionIndex = ref(0)
 const userProgressMap = ref({})
 const isLoading = ref(true)
 const errorMessage = ref('')
+const isCustomModalOpen = ref(false)
 
 const currentQuestion = computed(() => {
   if (questions.value.length === 0) return null
@@ -241,6 +292,15 @@ function selectQuestion(idx) {
   }
 }
 
+function toggleCustomModal() {
+  isCustomModalOpen.value = !isCustomModalOpen.value
+}
+
+function selectAndClose(idx) {
+  selectQuestion(idx)
+  isCustomModalOpen.value = false
+}
+
 function prevQuestion() {
   if (currentQuestionIndex.value > 0) {
     currentQuestionIndex.value--
@@ -253,12 +313,85 @@ function nextQuestion() {
   }
 }
 
+function isUserTypingOrEditing(e) {
+  const active = typeof document !== 'undefined' ? document.activeElement : null
+  const target = e.target
+
+  const checkElement = (el) => {
+    if (!el || typeof el !== 'object') return false
+
+    const tag = (el.tagName || '').toUpperCase()
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'IFRAME') {
+      return true
+    }
+
+    if (el.isContentEditable || el.getAttribute?.('contenteditable') === 'true') {
+      return true
+    }
+
+    if (typeof el.closest === 'function') {
+      if (
+        el.closest('input, textarea, select, iframe') ||
+        el.closest('[contenteditable="true"]') ||
+        el.closest('.monaco-editor, .cm-editor, .ace_editor, .view-lines, .inputarea') ||
+        el.closest('.edu-editor-container, .edu-editor-frame-wrap, .testcase-custom-input, #sec-compiler, .edu-card--editor')
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  if (checkElement(active) || checkElement(target)) {
+    return true
+  }
+
+  if (typeof e.composedPath === 'function') {
+    const path = e.composedPath()
+    for (const node of path) {
+      if (node && node.nodeType === 1 && checkElement(node)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
 function handleKeyNavigation(e) {
-  if (e.altKey && e.key === 'ArrowRight') {
+  if (e.key === 'Escape' && isCustomModalOpen.value) {
+    isCustomModalOpen.value = false
+    return
+  }
+
+  // If modal is open, do not trigger arrow navigation
+  if (isCustomModalOpen.value) {
+    return
+  }
+
+  // If the user is typing code in the editor or inside any input, do not navigate!
+  if (isUserTypingOrEditing(e)) {
+    return
+  }
+
+  // Avoid interfering with browser or OS combinations (Cmd+Arrow, Ctrl+Arrow, Shift+Arrow)
+  if (e.ctrlKey || e.metaKey || e.shiftKey) {
+    return
+  }
+
+  if (e.key === 'ArrowRight') {
     e.preventDefault()
+    e.stopPropagation()
+    if (typeof e.stopImmediatePropagation === 'function') {
+      e.stopImmediatePropagation()
+    }
     nextQuestion()
-  } else if (e.altKey && e.key === 'ArrowLeft') {
+  } else if (e.key === 'ArrowLeft') {
     e.preventDefault()
+    e.stopPropagation()
+    if (typeof e.stopImmediatePropagation === 'function') {
+      e.stopImmediatePropagation()
+    }
     prevQuestion()
   }
 }
@@ -280,16 +413,22 @@ async function onQuestionsUpdated() {
   await fetchProgress()
 }
 
+async function onQuestionSolved() {
+  await fetchProgress()
+}
+
 onMounted(async () => {
   await fetchQuestions()
   await fetchProgress()
-  window.addEventListener('keydown', handleKeyNavigation)
+  window.addEventListener('keydown', handleKeyNavigation, { capture: true })
   window.addEventListener('questions-updated', onQuestionsUpdated)
+  window.addEventListener('question-solved', onQuestionSolved)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyNavigation)
+  window.removeEventListener('keydown', handleKeyNavigation, { capture: true })
   window.removeEventListener('questions-updated', onQuestionsUpdated)
+  window.removeEventListener('question-solved', onQuestionSolved)
 })
 </script>
 
@@ -372,6 +511,20 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.deck-topic-badge {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.deck-topic-text {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
 .deck-breadcrumbs {
   display: flex;
   align-items: center;
@@ -399,73 +552,310 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 
-.question-pills-list {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.question-pill {
+/* ── Custom Button in Navbar ───────────────────────────────────────── */
+.deck-custom-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  font-size: 0.64rem;
-  color: #475569;
+  gap: 5px;
+  padding: 3px 10px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1e293b;
   cursor: pointer;
   transition: all 0.15s ease;
-  white-space: nowrap;
+  font-family: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-.question-pill:hover {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1d4ed8;
-}
-
-.question-pill--active {
+.deck-custom-btn:hover {
   background: #eff6ff;
   border-color: #3b82f6;
   color: #1d4ed8;
-  font-weight: 700;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
 }
 
-.pill-number {
-  font-weight: 700;
+.deck-custom-btn--active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
 
-.pill-title {
-  max-width: 130px;
+.deck-custom-icon {
+  width: 12px;
+  height: 12px;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.deck-custom-text {
+  letter-spacing: 0.01em;
+}
+
+.deck-chevron-icon {
+  width: 11px;
+  height: 11px;
+  color: #64748b;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.deck-chevron-icon--open {
+  transform: rotate(180deg);
+  color: #2563eb;
+}
+
+/* ── Custom Question Selection Modal Overlay ───────────────────────── */
+.custom-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.custom-modal-card {
+  width: 100%;
+  max-width: 520px;
+  max-height: 85vh;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  animation: modalScaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.custom-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.custom-modal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.custom-modal-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.custom-modal-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.custom-modal-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.custom-modal-close-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.custom-modal-close-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.custom-modal-list {
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-modal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  gap: 12px;
+}
+
+.custom-modal-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.custom-modal-item--active {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+}
+
+.custom-modal-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.custom-item-num {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #2563eb;
+  padding: 4px 8px;
+  background: #eff6ff;
+  border-radius: 6px;
+  border: 1px solid #dbeafe;
+  flex-shrink: 0;
+}
+
+.custom-item-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.custom-item-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pill-status-dot {
+.custom-item-topic {
+  font-size: 0.68rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.custom-modal-item-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.status-pill--passed {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.status-pill--partial {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-pill--unattempted,
+.status-pill--failed {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.status-pill-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #cbd5e1;
 }
 
-.pill-status-dot--passed {
-  background: #10b981;
-  box-shadow: 0 0 0 2px #d1fae5;
+.status-pill--passed .status-pill-dot {
+  background: #16a34a;
 }
 
-.pill-status-dot--partial {
-  background: #f59e0b;
-  box-shadow: 0 0 0 2px #fef3c7;
+.status-pill--partial .status-pill-dot {
+  background: #d97706;
 }
 
-.pill-status-dot--failed {
-  background: #ef4444;
-  box-shadow: 0 0 0 2px #fee2e2;
+.status-pill--unattempted .status-pill-dot,
+.status-pill--failed .status-pill-dot {
+  background: #94a3b8;
+}
+
+.current-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #2563eb;
+  padding: 2px 6px;
+  background: #dbeafe;
+  border-radius: 4px;
+}
+
+/* Modal Fade Transition */
+.custom-modal-fade-enter-active,
+.custom-modal-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.custom-modal-fade-enter-from,
+.custom-modal-fade-leave-to {
+  opacity: 0;
 }
 
 .deck-nav-right {

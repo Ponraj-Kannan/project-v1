@@ -131,6 +131,21 @@ export default defineConfig(({ mode }) => {
               return
             }
 
+            // ── /api/topics ─────────────────────────────────────────────
+            if (req.url && req.url.startsWith('/api/topics')) {
+              const body = await parseBody(req)
+              const { vercelReq, vercelRes } = makeVercelShim(req, body, res)
+              try {
+                const { default: handler } = await import('../api/topics.js')
+                await handler(vercelReq, vercelRes)
+              } catch (err: any) {
+                console.error('Error in /api/topics middleware:', err)
+                res.statusCode = 500
+                res.end(JSON.stringify({ error: err?.message || String(err) }))
+              }
+              return
+            }
+
             // ── /api/submissions ────────────────────────────────────────
             if (req.url && req.url.startsWith('/api/submissions')) {
               const body = await parseBody(req)

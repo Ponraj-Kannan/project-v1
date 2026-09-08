@@ -51,8 +51,23 @@ export function getSupabaseClient() {
 
 // ── Local Fallback Store Paths ────────────────────────────────────────────────
 const localFilePath = path.join(projectRoot, 'allowed-emails.json')
+const localTopicsPath = path.join(projectRoot, 'topics-store.json')
 const localQuestionsPath = path.join(projectRoot, 'questions-store.json')
-const localSubmissionsPath = path.join(projectRoot, 'submissions-store.json')
+const localSolvedQuestionsPath = path.join(projectRoot, 'solved-questions-store.json')
+const legacySubmissionsPath = path.join(projectRoot, 'submissions-store.json')
+
+// ── Default Seed Topics (Only id, name, display_order) ────────────────────────
+const DEFAULT_TOPICS = [
+  { id: '11111111-0000-0000-0000-000000000001', name: 'Decision-making statements', display_order: 1 },
+  { id: '11111111-0000-0000-0000-000000000002', name: 'Arrays', display_order: 2 },
+  { id: '11111111-0000-0000-0000-000000000003', name: 'Strings', display_order: 3 },
+  { id: '11111111-0000-0000-0000-000000000004', name: 'Loops & Iteration', display_order: 4 },
+  { id: '11111111-0000-0000-0000-000000000005', name: 'Methods & Functions', display_order: 5 },
+  { id: '11111111-0000-0000-0000-000000000006', name: 'Object-Oriented Programming', display_order: 6 },
+  { id: '11111111-0000-0000-0000-000000000007', name: 'Recursion', display_order: 7 },
+  { id: '11111111-0000-0000-0000-000000000008', name: 'Data Structures', display_order: 8 },
+  { id: '11111111-0000-0000-0000-000000000009', name: 'Core Concepts', display_order: 9 }
+]
 
 // ── Default Seed Questions ────────────────────────────────────────────────────
 const DEFAULT_QUESTIONS = [
@@ -198,26 +213,182 @@ function saveLocalQuestions(questions) {
   }
 }
 
-function loadLocalSubmissions() {
+function loadLocalSolvedQuestions() {
   try {
-    if (fs.existsSync(localSubmissionsPath)) {
-      const data = JSON.parse(fs.readFileSync(localSubmissionsPath, 'utf8'))
+    if (fs.existsSync(localSolvedQuestionsPath)) {
+      const data = JSON.parse(fs.readFileSync(localSolvedQuestionsPath, 'utf8'))
       if (Array.isArray(data)) {
         return data
       }
+    } else if (fs.existsSync(legacySubmissionsPath)) {
+      // Auto-migrate passed submissions from legacy store
+      const data = JSON.parse(fs.readFileSync(legacySubmissionsPath, 'utf8'))
+      if (Array.isArray(data)) {
+        const passedOnly = data
+          .filter(s => s.status === 'passed' || (s.cases_passed === s.total_cases && s.total_cases > 0))
+          .map(s => ({
+            id: `local-solved-${s.id}`,
+            user_id: s.user_id,
+            question_id: s.question_id,
+            is_solved: true,
+            solved_at: s.created_at || new Date().toISOString()
+          }))
+        saveLocalSolvedQuestions(passedOnly)
+        return passedOnly
+      }
     }
   } catch (err) {
-    console.warn('[Supabase Lib] Failed to read local fallback submissions:', err.message)
+    console.warn('[Supabase Lib] Failed to read local fallback solved questions:', err.message)
   }
   return []
 }
 
-function saveLocalSubmissions(submissions) {
+function saveLocalSolvedQuestions(solvedQuestions) {
   try {
-    fs.writeFileSync(localSubmissionsPath, JSON.stringify(submissions, null, 2), 'utf8')
+    fs.writeFileSync(localSolvedQuestionsPath, JSON.stringify(solvedQuestions, null, 2), 'utf8')
   } catch (err) {
-    console.warn('[Supabase Lib] Failed to write local fallback submissions:', err.message)
+    console.warn('[Supabase Lib] Failed to write local fallback solved questions:', err.message)
   }
+}
+
+// ── Local Topics Store (Only id, name, display_order) ─────────────────────────
+function loadLocalTopics() {
+  try {
+    if (fs.existsSync(localTopicsPath)) {
+      const data = JSON.parse(fs.readFileSync(localTopicsPath, 'utf8'))
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map(t => ({
+          id: t.id,
+          name: t.name,
+          display_order: t.display_order ?? 0
+        }))
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase Lib] Failed to read local topics:', err.message)
+  }
+  saveLocalTopics(DEFAULT_TOPICS)
+  return DEFAULT_TOPICS
+}
+
+function saveLocalTopics(topics) {
+  try {
+    const cleaned = (topics || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      display_order: t.display_order ?? 0
+    }))
+    fs.writeFileSync(localTopicsPath, JSON.stringify(cleaned, null, 2), 'utf8')
+  } catch (err) {
+    console.warn('[Supabase Lib] Failed to write local topics:', err.message)
+  }
+}
+
+export async function getTopics() {
+  const client = getSupabaseClient()
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('topics')
+        .select('id, name, display_order')
+        .order('display_order', { ascending: true })
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const mapped = data.map(t => ({
+          id: t.id,
+          name: t.name,
+          display_order: t.display_order ?? 0
+        }))
+        saveLocalTopics(mapped)
+        return mapped
+      }
+
+      // If table exists but empty, try seeding default topics
+      if (!error && Array.isArray(data) && data.length === 0) {
+        try {
+          await client.from('topics').upsert(DEFAULT_TOPICS, { onConflict: 'name' })
+          const res = await client.from('topics').select('id, name, display_order').order('display_order', { ascending: true })
+          if (res.data && res.data.length > 0) {
+            saveLocalTopics(res.data)
+            return res.data
+          }
+        } catch (seedErr) {}
+      }
+    } catch (err) {
+      console.warn('[Supabase Lib] getTopics remote error:', err.message)
+    }
+  }
+
+  return loadLocalTopics()
+}
+
+export async function createTopic({ name, display_order }) {
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    throw new Error('Topic name is required.')
+  }
+
+  const cleanName = name.trim()
+  const existingTopics = await getTopics()
+  const duplicate = existingTopics.find(t => t.name.toLowerCase() === cleanName.toLowerCase())
+  if (duplicate) {
+    return duplicate
+  }
+
+  const order = Number.isInteger(display_order) && display_order > 0
+    ? display_order
+    : (existingTopics.reduce((max, t) => Math.max(max, t.display_order || 0), 0) + 1)
+
+  const payload = {
+    id: crypto.randomUUID(),
+    name: cleanName,
+    display_order: order
+  }
+
+  const client = getSupabaseClient()
+  if (client) {
+    try {
+      const { data, error } = await client
+        .from('topics')
+        .insert(payload)
+        .select('id, name, display_order')
+        .single()
+
+      if (!error && data) {
+        const local = loadLocalTopics()
+        local.push({
+          id: data.id,
+          name: data.name,
+          display_order: data.display_order ?? 0
+        })
+        saveLocalTopics(local)
+        return data
+      }
+    } catch (err) {
+      console.warn('[Supabase Lib] createTopic remote error:', err.message)
+    }
+  }
+
+  const local = loadLocalTopics()
+  local.push(payload)
+  saveLocalTopics(local)
+  return payload
+}
+
+export async function deleteTopic(id) {
+  if (!id) return false
+  const client = getSupabaseClient()
+  if (client) {
+    try {
+      await client.from('topics').delete().eq('id', id)
+    } catch (err) {
+      console.warn('[Supabase Lib] deleteTopic remote error:', err.message)
+    }
+  }
+
+  const local = loadLocalTopics()
+  const updated = local.filter(t => t.id !== id)
+  saveLocalTopics(updated)
+  return true
 }
 
 // ── Core User Operations ─────────────────────────────────────────────────────
@@ -599,14 +770,39 @@ export async function upsertQuestion(questionData) {
     payload.id = crypto.randomUUID()
   }
 
+  let resolvedTopicId = questionData.topic_id || null
+  if (!resolvedTopicId && payload.topic) {
+    try {
+      const allTopics = await getTopics()
+      const found = allTopics.find(t => t.name.toLowerCase() === payload.topic.toLowerCase())
+      if (found) resolvedTopicId = found.id
+    } catch (e) {}
+  }
+  if (resolvedTopicId) {
+    payload.topic_id = resolvedTopicId
+  }
+
   const client = getSupabaseClient()
   if (client) {
     try {
-      const { data, error } = await client
+      let { data, error } = await client
         .from('questions')
         .upsert(payload, { onConflict: 'slug' })
         .select()
         .single()
+
+      if (error && payload.topic_id && error.message && error.message.includes('topic_id')) {
+        // Fallback if remote schema hasn't executed migration yet
+        const safePayload = { ...payload }
+        delete safePayload.topic_id
+        const retryRes = await client
+          .from('questions')
+          .upsert(safePayload, { onConflict: 'slug' })
+          .select()
+          .single()
+        data = retryRes.data
+        error = retryRes.error
+      }
 
       if (error) throw error
 
@@ -709,7 +905,7 @@ export async function reorderQuestions(orderedIdsOrSlugs) {
   return updatedList
 }
 
-// ── Submissions & Progress Operations ─────────────────────────────────────────
+// ── Solved Questions & Progress Operations ───────────────────────────────────
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -718,24 +914,22 @@ export function isUUID(str) {
 }
 
 /**
- * Records a user's code submission and test evaluation result.
- * Automatically derives status: 'passed' | 'failed' | 'partial' based on cases_passed.
+ * Records that a user has solved a question.
+ * A question is solved when all test cases are passed.
+ * Automatically upserts into Supabase `solved_questions` table,
+ * with graceful fallback to `submissions` or local store.
  */
-export async function recordSubmission({
+export async function recordQuestionSolved({
   userId,
   userEmail,
   questionId,
-  questionSlug,
-  casesPassed,
-  totalCases,
-  submittedCode = ''
+  questionSlug
 }) {
   const client = getSupabaseClient()
 
   let resolvedUserId = userId
   if (!resolvedUserId && userEmail) {
     let user = await findUserByEmail(userEmail)
-    // If user does not exist in DB yet, auto-provision as student to ensure FK constraint succeeds
     if (!user && client) {
       try {
         const cleanEmail = userEmail.trim().toLowerCase()
@@ -748,7 +942,7 @@ export async function recordSubmission({
           user = newUser
         }
       } catch (err) {
-        console.warn('[Supabase Lib] Auto-create user on submission notice:', err.message)
+        console.warn('[Supabase Lib] Auto-create user on solved notice:', err.message)
       }
     }
     if (user) {
@@ -759,89 +953,99 @@ export async function recordSubmission({
   }
 
   if (!resolvedUserId) {
-    throw new Error('Valid userId or userEmail is required to record submission')
+    throw new Error('Valid userId or userEmail is required to record solved question')
   }
 
   let resolvedQuestionId = questionId
-  let resolvedTotalCases = totalCases
-
   if (!resolvedQuestionId && questionSlug) {
     const q = await getQuestionByIdOrSlug(questionSlug)
-    if (q) {
-      resolvedQuestionId = q.id
-      if (resolvedTotalCases === undefined || resolvedTotalCases === null) {
-        resolvedTotalCases = q.total_test_cases || (Array.isArray(q.test_cases) ? q.test_cases.length : 5)
-      }
-    }
+    if (q) resolvedQuestionId = q.id
   } else if (resolvedQuestionId) {
     const q = await getQuestionByIdOrSlug(resolvedQuestionId)
-    if (q) {
-      resolvedQuestionId = q.id
-      if (resolvedTotalCases === undefined || resolvedTotalCases === null) {
-        resolvedTotalCases = q.total_test_cases || (Array.isArray(q.test_cases) ? q.test_cases.length : 5)
-      }
-    }
+    if (q) resolvedQuestionId = q.id
   }
 
   if (!resolvedQuestionId) {
-    throw new Error('Valid questionId or questionSlug is required to record submission')
+    throw new Error('Valid questionId or questionSlug is required to record solved question')
   }
 
-  const passed = Math.max(0, parseInt(casesPassed, 10) || 0)
-  const total = Math.max(1, parseInt(resolvedTotalCases, 10) || 5)
-
-  // Derive status
-  let status = 'failed'
-  if (passed >= total) {
-    status = 'passed'
-  } else if (passed > 0) {
-    status = 'partial'
-  }
-
-  const submissionPayload = {
+  const nowIso = new Date().toISOString()
+  const solvedPayload = {
     user_id: resolvedUserId,
     question_id: resolvedQuestionId,
-    cases_passed: passed,
-    total_cases: total,
-    status,
-    submitted_code: submittedCode || null,
-    created_at: new Date().toISOString()
+    is_solved: true,
+    solved_at: nowIso,
+    updated_at: nowIso
   }
 
-  // Only attempt Supabase DB insert if both user_id and question_id are valid UUIDs
+  // 1. Attempt Supabase DB upsert if both user_id and question_id are valid UUIDs
   if (client && isUUID(resolvedUserId) && isUUID(resolvedQuestionId)) {
     try {
       const { data, error } = await client
-        .from('submissions')
-        .insert([submissionPayload])
+        .from('solved_questions')
+        .upsert([solvedPayload], { onConflict: 'user_id,question_id' })
         .select()
-        .single()
+        .maybeSingle()
 
-      if (error) {
-        console.warn('[Supabase Lib] recordSubmission insert warning:', error.message)
-      } else if (data) {
+      if (!error && data) {
         return data
       }
+
+      if (error) {
+        // If solved_questions table does not exist in schema yet (code PGRST205),
+        // fallback gracefully to updating submissions table with status='passed'
+        if (error.code === 'PGRST205') {
+          console.info('[Supabase Lib] Table solved_questions not found, falling back to submissions table until migration is run.')
+          const { data: subData } = await client
+            .from('submissions')
+            .insert([{
+              user_id: resolvedUserId,
+              question_id: resolvedQuestionId,
+              cases_passed: 5,
+              total_cases: 5,
+              status: 'passed',
+              created_at: nowIso
+            }])
+            .select()
+            .maybeSingle()
+          if (subData) {
+            return {
+              id: subData.id,
+              user_id: resolvedUserId,
+              question_id: resolvedQuestionId,
+              is_solved: true,
+              solved_at: subData.created_at
+            }
+          }
+        } else {
+          console.warn('[Supabase Lib] recordQuestionSolved upsert warning:', error.message)
+        }
+      }
     } catch (err) {
-      console.warn('[Supabase Lib] recordSubmission insert failed:', err.message)
+      console.warn('[Supabase Lib] recordQuestionSolved failed:', err.message)
     }
   }
 
-  // Local fallback (also handles non-UUID local questions/users)
-  const localSubmissions = loadLocalSubmissions()
+  // 2. Local fallback store
+  const localSolved = loadLocalSolvedQuestions()
+  const existingIdx = localSolved.findIndex(s => s.user_id === resolvedUserId && s.question_id === resolvedQuestionId)
   const record = {
-    id: `local-sub-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    ...submissionPayload
+    id: `local-solved-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    ...solvedPayload
   }
-  localSubmissions.unshift(record)
-  saveLocalSubmissions(localSubmissions)
+  if (existingIdx >= 0) {
+    localSolved[existingIdx] = { ...localSolved[existingIdx], ...solvedPayload }
+  } else {
+    localSolved.unshift(record)
+  }
+  saveLocalSolvedQuestions(localSolved)
   return record
 }
 
 /**
- * Retrieves submissions for a given user and/or question.
+ * Retrieves solved questions for a given user and/or question.
  */
-export async function getSubmissions({ userId, userEmail, questionId, questionSlug } = {}) {
+export async function getSolvedQuestions({ userId, userEmail, questionId, questionSlug } = {}) {
   let resolvedUserId = userId
   if (!resolvedUserId && userEmail) {
     const user = await findUserByEmail(userEmail)
@@ -863,7 +1067,6 @@ export async function getSubmissions({ userId, userEmail, questionId, questionSl
   }
 
   const client = getSupabaseClient()
-  // Only query Supabase if we don't have invalid non-UUID parameters
   const canQuerySupabase = client &&
     (!resolvedUserId || isUUID(resolvedUserId)) &&
     (!resolvedQuestionId || isUUID(resolvedQuestionId))
@@ -871,18 +1074,9 @@ export async function getSubmissions({ userId, userEmail, questionId, questionSl
   if (canQuerySupabase) {
     try {
       let query = client
-        .from('submissions')
-        .select(`
-          id,
-          user_id,
-          question_id,
-          cases_passed,
-          total_cases,
-          status,
-          submitted_code,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
+        .from('solved_questions')
+        .select('id, user_id, question_id, is_solved, solved_at, created_at')
+        .eq('is_solved', true)
 
       if (resolvedUserId && isUUID(resolvedUserId)) {
         query = query.eq('user_id', resolvedUserId)
@@ -893,19 +1087,38 @@ export async function getSubmissions({ userId, userEmail, questionId, questionSl
 
       const { data, error } = await query
 
-      if (error) {
-        console.warn('[Supabase Lib] getSubmissions warning:', error.message)
-      } else if (Array.isArray(data)) {
+      if (!error && Array.isArray(data)) {
         return data
       }
+
+      // If table solved_questions not yet migrated, fall back to passed submissions
+      if (error && error.code === 'PGRST205') {
+        let subQuery = client
+          .from('submissions')
+          .select('id, user_id, question_id, status, created_at')
+          .eq('status', 'passed')
+        if (resolvedUserId && isUUID(resolvedUserId)) subQuery = subQuery.eq('user_id', resolvedUserId)
+        if (resolvedQuestionId && isUUID(resolvedQuestionId)) subQuery = subQuery.eq('question_id', resolvedQuestionId)
+
+        const { data: subData } = await subQuery
+        if (Array.isArray(subData)) {
+          return subData.map(s => ({
+            id: s.id,
+            user_id: s.user_id,
+            question_id: s.question_id,
+            is_solved: true,
+            solved_at: s.created_at
+          }))
+        }
+      }
     } catch (err) {
-      console.warn('[Supabase Lib] getSubmissions failed:', err.message)
+      console.warn('[Supabase Lib] getSolvedQuestions failed:', err.message)
     }
   }
 
-  // Local fallback: strictly filter by question when questionId or questionSlug is provided
-  const localSubmissions = loadLocalSubmissions()
-  return localSubmissions.filter(s => {
+  // Local fallback
+  const localSolved = loadLocalSolvedQuestions()
+  return localSolved.filter(s => {
     if (resolvedUserId && s.user_id !== resolvedUserId) return false
     if (questionId || questionSlug || resolvedQuestionId) {
       const matches = s.question_id === resolvedQuestionId ||
@@ -914,12 +1127,12 @@ export async function getSubmissions({ userId, userEmail, questionId, questionSl
                       (questionSlug && s.question_id === questionSlug)
       if (!matches) return false
     }
-    return true
+    return !!s.is_solved
   })
 }
 
 /**
- * Retrieves aggregated per-question progress for a user across all questions.
+ * Retrieves per-question solved progress for a user across all active questions.
  */
 export async function getUserProgress({ userId, userEmail }) {
   let resolvedUserId = userId
@@ -933,23 +1146,13 @@ export async function getUserProgress({ userId, userEmail }) {
   }
 
   const questions = await getQuestions({ includeInactive: false })
-  const submissions = resolvedUserId ? await getSubmissions({ userId: resolvedUserId }) : []
+  const solvedList = resolvedUserId ? await getSolvedQuestions({ userId: resolvedUserId }) : []
+  const solvedQuestionIds = new Set(solvedList.map(s => s.question_id))
 
   const progressByQuestion = {}
   for (const q of questions) {
-    const qSubs = submissions.filter(s => s.question_id === q.id)
-    const hasPassed = qSubs.some(s => s.status === 'passed')
-    const hasPartial = qSubs.some(s => s.status === 'partial')
-    const bestPassed = qSubs.reduce((max, s) => Math.max(max, s.cases_passed || 0), 0)
-
-    let status = 'unattempted'
-    if (hasPassed) {
-      status = 'passed'
-    } else if (hasPartial) {
-      status = 'partial'
-    } else if (qSubs.length > 0) {
-      status = 'failed'
-    }
+    const isSolved = solvedQuestionIds.has(q.id) || (q.slug && solvedQuestionIds.has(q.slug))
+    const solvedRecord = solvedList.find(s => s.question_id === q.id || (q.slug && s.question_id === q.slug))
 
     progressByQuestion[q.id] = {
       questionId: q.id,
@@ -958,15 +1161,14 @@ export async function getUserProgress({ userId, userEmail }) {
       displayOrder: q.display_order,
       difficulty: q.difficulty,
       totalCases: q.total_test_cases,
-      totalAttempts: qSubs.length,
-      bestCasesPassed: bestPassed,
-      status,
-      latestSubmission: qSubs[0] || null
+      status: isSolved ? 'passed' : 'unattempted',
+      isSolved: !!isSolved,
+      solvedAt: solvedRecord?.solved_at || null
     }
   }
 
   const totalQuestions = questions.length
-  const completedQuestions = Object.values(progressByQuestion).filter(p => p.status === 'passed').length
+  const completedQuestions = Object.values(progressByQuestion).filter(p => p.isSolved || p.status === 'passed').length
 
   return {
     userId: resolvedUserId,
@@ -975,6 +1177,43 @@ export async function getUserProgress({ userId, userEmail }) {
     completionPercentage: totalQuestions > 0 ? Math.round((completedQuestions / totalQuestions) * 100) : 0,
     progress: progressByQuestion
   }
+}
+
+// ── Backward-compatible Wrappers ─────────────────────────────────────────────
+
+export async function recordSubmission({
+  userId,
+  userEmail,
+  questionId,
+  questionSlug,
+  casesPassed,
+  totalCases,
+  submittedCode = ''
+}) {
+  const passed = Math.max(0, parseInt(casesPassed, 10) || 0)
+  const total = Math.max(1, parseInt(totalCases, 10) || 5)
+
+  if (passed >= total && total > 0) {
+    const solved = await recordQuestionSolved({ userId, userEmail, questionId, questionSlug })
+    return {
+      ...solved,
+      cases_passed: passed,
+      total_cases: total,
+      status: 'passed'
+    }
+  }
+
+  return {
+    user_id: userId,
+    question_id: questionId,
+    cases_passed: passed,
+    total_cases: total,
+    status: passed > 0 ? 'partial' : 'failed'
+  }
+}
+
+export async function getSubmissions(params = {}) {
+  return getSolvedQuestions(params)
 }
 
 /**

@@ -127,16 +127,8 @@ const defaultLanguageBoilerplate = computed(() => {
   return DEFAULT_BOILERPLATES[lang] || DEFAULT_BOILERPLATES.java
 })
 
-// Resolved code: codeKey takes priority over starterCode, with standard boilerplate fallback
-const resolvedCode = computed(() => {
-  if (props.codeKey && CODE_LIBRARY[props.codeKey]) {
-    return CODE_LIBRARY[props.codeKey]
-  }
-  if (props.starterCode && props.starterCode.trim()) {
-    return props.starterCode
-  }
-  return defaultLanguageBoilerplate.value
-})
+// Resolved code: do not inject starter or boilerplate code into the editor
+const resolvedCode = computed(() => '')
 
 // Supported languages in Python Tutor
 const ptLang = computed(() => {
@@ -178,14 +170,6 @@ const getSavedCode = () => {
   try {
     const parsed = JSON.parse(saved)
     if (!parsed || !parsed.code) return null
-    // If the saved code is OneCompiler's generic default HelloWorld, overwrite it
-    if (
-      parsed.code.includes('Hello, World!') ||
-      parsed.code.includes('HelloWorld') ||
-      parsed.code.includes('System.out.println("Hello, World!");')
-    ) {
-      return null
-    }
     return parsed.code
   } catch (e) {
     return null
@@ -207,10 +191,7 @@ const oneCompilerUrl = computed(() => {
     params.set('hideStdin', 'true')
   }
 
-  const savedCode = getSavedCode()
-  const initialCode = savedCode || visualizerCode.value || resolvedCode.value || defaultLanguageBoilerplate.value || ''
-
-  if (initialCode) params.set('code', initialCode)
+  // Do not set code param with starter/boilerplate code
   return `${base}?${params.toString()}`
 })
 
@@ -220,7 +201,7 @@ const showVisualizerWarning = ref(false)
 const showCompiler = ref(false)
 const isExecuting = ref(false)
 
-const visualizerCode = ref(getSavedCode() || resolvedCode.value || defaultLanguageBoilerplate.value || '')
+const visualizerCode = ref('')
 const visualizerStdin = ref('')
 const ocFrameRef = ref(null)
 const fsOcFrameRef = ref(null)
@@ -228,8 +209,7 @@ const fsOcFrameRef = ref(null)
 let runTimeout = null
 
 const sendBoilerplateToOneCompiler = (codeToInject) => {
-  const targetCode = codeToInject || visualizerCode.value || getSavedCode() || resolvedCode.value || defaultLanguageBoilerplate.value
-  if (!targetCode) return
+  if (!codeToInject) return
 
   const payload = {
     eventType: 'populateCode',
@@ -237,7 +217,7 @@ const sendBoilerplateToOneCompiler = (codeToInject) => {
     files: [
       {
         name: activeFileName.value,
-        content: targetCode
+        content: codeToInject
       }
     ]
   }
@@ -264,16 +244,10 @@ function handleLanguageSelect(newLang) {
   activeLang.value = clean
   emit('update:language', clean)
   emit('languageChange', clean)
-
-  const newBoilerplate = DEFAULT_BOILERPLATES[clean] || DEFAULT_BOILERPLATES.java
-  visualizerCode.value = newBoilerplate
-  emit('update:code', newBoilerplate)
-  emit('codeChange', newBoilerplate)
-  sendBoilerplateToOneCompiler(newBoilerplate)
 }
 
 const openVisualizer = () => {
-  const code = visualizerCode.value || resolvedCode.value || ''
+  const code = visualizerCode.value || ''
   if (!code.trim()) {
     showVisualizerWarning.value = true
     return
@@ -288,7 +262,7 @@ const openCompiler = () => {
 
 const visualizerUrl = computed(() => {
   if (!ptLang.value) return ''
-  const encodedCode = encodeURIComponent(visualizerCode.value || resolvedCode.value || '')
+  const encodedCode = encodeURIComponent(visualizerCode.value || '')
   const inputLines = visualizerStdin.value ? visualizerStdin.value.split('\n') : []
   const encodedInput = encodeURIComponent(JSON.stringify(inputLines))
   return `https://pythontutor.com/iframe-embed.html#code=${encodedCode}&cumulative=false&heapPrimitives=nevernest&mode=display&origin=opt-frontend.js&py=${ptLang.value}&rawInputLstJSON=${encodedInput}&textReferences=false`
@@ -308,7 +282,7 @@ const fullscreenCompilerUrl = computed(() => {
   if (props.hideStdin) {
     params.set('hideStdin', 'true')
   }
-  const liveCode = visualizerCode.value || resolvedCode.value
+  const liveCode = visualizerCode.value
   if (liveCode) {
     params.set('code', liveCode)
   }
@@ -322,8 +296,6 @@ const onIframeLoad = () => {
       '*'
     )
   } catch(e) {}
-
-  sendBoilerplateToOneCompiler()
 }
 
 if (typeof window !== 'undefined') {
@@ -394,20 +366,6 @@ if (typeof window !== 'undefined') {
     }
 
     if (newCode !== null && newCode !== undefined && newCode !== '') {
-      // If OneCompiler sent its generic default HelloWorld, IMMEDIATELY overwrite it with our boilerplate
-      if (
-        newCode.includes('Hello, World!') ||
-        newCode.includes('HelloWorld') ||
-        newCode.includes('System.out.println("Hello, World!");')
-      ) {
-        const trueBoilerplate = resolvedCode.value || defaultLanguageBoilerplate.value
-        visualizerCode.value = trueBoilerplate
-        sendBoilerplateToOneCompiler(trueBoilerplate)
-        emit('update:code', trueBoilerplate)
-        emit('codeChange', trueBoilerplate)
-        return
-      }
-
       visualizerCode.value = newCode
       try {
         localStorage.setItem(storageKey.value, JSON.stringify({
@@ -436,21 +394,8 @@ if (typeof window !== 'undefined') {
   })
 }
 
-watch(
-  () => [resolvedCode.value, props.codeKey, storageKey.value],
-  ([newCode]) => {
-    const savedCode = getSavedCode()
-    if (!savedCode && newCode) {
-      visualizerCode.value = newCode
-      sendBoilerplateToOneCompiler(newCode)
-      emit('update:code', newCode)
-    }
-  },
-  { immediate: true }
-)
-
 defineExpose({
-  getCode: () => visualizerCode.value || resolvedCode.value || '',
+  getCode: () => visualizerCode.value || '',
   getLanguage: () => activeLang.value || props.language
 })
 </script>
@@ -459,36 +404,7 @@ defineExpose({
   <div class="edu-editor-container">
     <!-- ── Professional Pastel Editor Header ───────────────────────────── -->
     <div class="edu-editor-header">
-      <div class="edu-editor-left">
-        <!-- Interactive Language Selector -->
-        <div class="edu-lang-picker">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="edu-lang-icon">
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
-          </svg>
-          <select
-            class="edu-lang-select"
-            :value="ocLang"
-            @change="handleLanguageSelect($event.target.value)"
-            title="Select programming language"
-          >
-            <option value="java">Java</option>
-            <option value="cpp">C++</option>
-            <option value="c">C</option>
-            <option value="python">Python</option>
-            <option value="javascript">JavaScript</option>
-          </select>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="edu-select-arrow">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </div>
-
-        <!-- Active File Badge -->
-        <div class="edu-file-pill">
-          <span class="edu-file-dot" :class="`edu-file-dot--${ocLang}`"></span>
-          <span class="edu-file-name">{{ activeFileName }}</span>
-        </div>
-      </div>
+      <div class="edu-editor-left"></div>
 
       <div class="edu-editor-right">
         <!-- Sleek Standard-sized Run Button -->

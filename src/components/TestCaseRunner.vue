@@ -321,14 +321,34 @@ async function runVisibleTestCases() {
   isRunningVisible.value = false
 
   if (allPassed) {
-    lastRunState.value = 'passed_visible'
-    lastRunMessage.value = `All ${passedCount} sample test cases passed successfully. Click "Submit Code" to test hidden evaluation cases.`
-    showToast({
-      type: 'success',
-      title: 'Sample Test Cases Passed',
-      message: `All ${passedCount} sample cases passed. Submit to verify all test cases.`,
-      duration: 3000
-    })
+    const isEntireQuestionPassed = (props.testCases.length > 0 && passedCount === props.testCases.length)
+    if (isEntireQuestionPassed) {
+      emit('submit', {
+        casesPassed: passedCount,
+        totalCases: props.testCases.length,
+        allPassed: true,
+        status: 'passed',
+        code: codeToRun,
+        results: results.value
+      })
+      lastRunState.value = 'passed_all'
+      lastRunMessage.value = `All ${passedCount}/${passedCount} Test Cases Passed. Question Solved!`
+      showToast({
+        type: 'success',
+        title: 'Question Solved!',
+        message: `All ${passedCount} test cases passed.`,
+        duration: 4000
+      })
+    } else {
+      lastRunState.value = 'passed_visible'
+      lastRunMessage.value = `All ${passedCount} sample test cases passed successfully. Click "Submit Code" to test hidden evaluation cases.`
+      showToast({
+        type: 'success',
+        title: 'Sample Test Cases Passed',
+        message: `All ${passedCount} sample cases passed. Submit to verify all test cases.`,
+        duration: 3000
+      })
+    }
   } else {
     const firstFailed = targetCases.find(
       (tc) => results.value[tc.id]?.status === 'failed' || results.value[tc.id]?.status === 'error'
@@ -408,6 +428,7 @@ async function runAllTestCases() {
   emit('submit', {
     casesPassed: passedCount,
     totalCases: totalCount,
+    allPassed,
     status,
     code: codeToRun,
     results: results.value
@@ -418,11 +439,11 @@ async function runAllTestCases() {
   if (allPassed) {
     lastRunState.value = 'passed_all'
     lastRunMessage.value = totalHidden > 0
-      ? `All ${totalCount}/${totalCount} Test Cases Passed (${hiddenSummaryStr}) Submission Accepted!`
-      : `All ${totalCount}/${totalCount} Test Cases Passed. Submission Accepted!`
+      ? `All ${totalCount}/${totalCount} Test Cases Passed (${hiddenSummaryStr}) Question Solved!`
+      : `All ${totalCount}/${totalCount} Test Cases Passed. Question Solved!`
     showToast({
       type: 'success',
-      title: 'Submission Accepted',
+      title: 'Question Solved!',
       message: totalHidden > 0 ? `${hiddenSummaryStr} All test cases passed.` : `All ${totalCount} test cases passed.`,
       duration: 4000
     })
@@ -441,7 +462,7 @@ async function runAllTestCases() {
       : `${passedCount}/${totalCount} test cases passed.`
     showToast({
       type: 'error',
-      title: 'Submission Incomplete',
+      title: 'Test Cases Incomplete',
       message: totalHidden > 0 ? `${hiddenSummaryStr}` : `${passedCount}/${totalCount} test cases passed.`,
       duration: 3500
     })

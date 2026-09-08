@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
   // Helper: build a Vercel-like req/res shim for dev-server middleware
   function makeVercelShim(req: any, body: any, res: any) {
     const vercelReq = {
+      url: req.url,
       method: req.method,
       headers: req.headers,
       body,
@@ -103,6 +104,21 @@ export default defineConfig(({ mode }) => {
                 await handler(vercelReq, vercelRes)
               } catch (err: any) {
                 console.error('Error in /api/questions middleware:', err)
+                res.statusCode = 500
+                res.end(JSON.stringify({ error: err?.message || String(err) }))
+              }
+              return
+            }
+
+            // ── /api/topics ───────────────────────────────────────────────
+            if (req.url && req.url.startsWith('/api/topics')) {
+              const body = await parseBody(req)
+              const { vercelReq, vercelRes } = makeVercelShim(req, body, res)
+              try {
+                const { default: handler } = await import('./api/topics.js')
+                await handler(vercelReq, vercelRes)
+              } catch (err: any) {
+                console.error('Error in /api/topics middleware:', err)
                 res.statusCode = 500
                 res.end(JSON.stringify({ error: err?.message || String(err) }))
               }

@@ -16,14 +16,10 @@
 
         <div class="edu-nav-divider"></div>
 
-        <!-- Clean Breadcrumb Navigation -->
-        <nav class="edu-breadcrumbs" aria-label="Breadcrumb">
-          <span class="edu-crumb">Practice</span>
-          <span class="edu-crumb-sep">/</span>
-          <span class="edu-crumb">{{ (editorLang || effectiveLanguage).toUpperCase() }}</span>
-          <span class="edu-crumb-sep">/</span>
-          <span class="edu-crumb edu-crumb--active">{{ effectiveTopic }}</span>
-        </nav>
+        <!-- Topic Display -->
+        <div class="edu-topic-badge">
+          <span class="edu-topic-text">{{ effectiveTopic }}</span>
+        </div>
       </div>
 
       <div class="edu-nav-right">
@@ -78,13 +74,9 @@
              1. PROBLEM & QUESTION DESCRIPTION (Appears First)
              ═════════════════════════════════════════════════════════════════ -->
         <section class="edu-card" ref="problemSectionRef" id="sec-problem">
-          <!-- Clean Problem Navigation Tabs -->
+          <!-- Clean Problem Navigation Bar -->
           <div class="edu-tab-bar">
-            <button
-              class="edu-tab-btn"
-              :class="{ 'edu-tab-btn--active': activeTab === 'problem' }"
-              @click="activeTab = 'problem'"
-            >
+            <button class="edu-tab-btn edu-tab-btn--active">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="edu-tab-icon">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
@@ -93,23 +85,10 @@
               </svg>
               <span>Problem</span>
             </button>
-
-            <button
-              class="edu-tab-btn"
-              :class="{ 'edu-tab-btn--active': activeTab === 'submissions' }"
-              @click="activeTab = 'submissions'"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="edu-tab-icon">
-                <polyline points="9 11 12 14 22 4"/>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
-              <span>Submissions</span>
-              <span v-if="submissionList.length > 0" class="edu-count-badge">{{ submissionList.length }}</span>
-            </button>
           </div>
 
-          <!-- Problem Tab Content -->
-          <div v-show="activeTab === 'problem'" class="edu-card-content">
+          <!-- Problem Content -->
+          <div class="edu-card-content">
             <div class="edu-problem-header">
               <div class="edu-problem-title-row">
                 <div class="edu-problem-title">{{ problemDisplayTitle }}</div>
@@ -215,41 +194,6 @@
               <slot name="sidebar" />
             </div>
           </div>
-
-          <!-- Submissions Tab Content -->
-          <div v-show="activeTab === 'submissions'" class="edu-card-content">
-            <div class="edu-problem-header">
-              <div class="edu-problem-title">Submission History</div>
-              <p class="edu-tab-sub">View your previous evaluations and test results from Supabase.</p>
-            </div>
-            <div v-if="submissionList.length === 0" class="edu-empty-subs">
-              <p>No submissions recorded yet for this question. Run your code and click "Submit Code" to test and save your progress.</p>
-            </div>
-            <div v-else class="edu-table-container">
-              <table class="edu-table">
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Cases Passed</th>
-                    <th>Language</th>
-                    <th>Submitted</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(sub, i) in submissionList" :key="i">
-                    <td>
-                      <span class="edu-status-badge" :class="`edu-status-badge--${sub.status}`">
-                        {{ sub.status === 'passed' ? 'Accepted' : (sub.status === 'partial' ? 'Partial' : 'Wrong Answer') }}
-                      </span>
-                    </td>
-                    <td><span class="edu-score-text">{{ sub.score }}</span></td>
-                    <td>{{ sub.language }}</td>
-                    <td class="edu-text-muted">{{ sub.time }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </section>
 
         <!-- ═════════════════════════════════════════════════════════════════
@@ -264,7 +208,7 @@
           >
             <JavaRunner
               :language="editorLang || effectiveLanguage"
-              :starter-code="effectiveStarterCode"
+              :starter-code="''"
               :code-key="codeKey || effectiveSlug"
               theme="light"
               v-model:code="editorCode"
@@ -284,7 +228,7 @@
             :code="editorCode"
             :language="editorLang || effectiveLanguage"
             @update:results="handleResultsUpdate"
-            @submit="handleSubmission"
+            @submit="handleTestEvaluation"
           />
         </section>
       </div>
@@ -378,7 +322,7 @@ const isLoadingQuestion = ref(Boolean(props.questionSlug || props.questionId));
 
 const activeTab = ref('problem');
 const activeNavTab = ref('problem');
-const editorCode = ref(props.starterCode || '');
+const editorCode = ref('');
 const editorLang = ref(props.language || 'java');
 const copiedKey = ref(null);
 const testCaseRunnerRef = ref(null);
@@ -387,7 +331,8 @@ const problemSectionRef = ref(null);
 const editorSectionRef = ref(null);
 const testsSectionRef = ref(null);
 const isLocallySolved = ref(false);
-const isSubmissionsLoaded = ref(false);
+const isServerSolved = ref(false);
+const isSolvedLoaded = ref(false);
 
 // Effective question fields (merging props + database loaded data)
 const effectiveSlug = computed(() => props.questionSlug || loadedQuestionData.value?.slug || '');
@@ -397,7 +342,7 @@ const effectiveTitle = computed(() => loadedQuestionData.value?.title || props.s
 const effectiveDifficulty = computed(() => props.difficulty || loadedQuestionData.value?.difficulty || 'Easy');
 const effectiveScore = computed(() => props.score ?? loadedQuestionData.value?.score ?? 10);
 const effectiveLanguage = computed(() => props.language || loadedQuestionData.value?.language || 'java');
-const effectiveStarterCode = computed(() => props.starterCode || loadedQuestionData.value?.starter_code || '');
+const effectiveStarterCode = computed(() => '');
 const effectiveContents = computed(() => {
   if (props.contents && props.contents.length > 0) return props.contents;
   if (loadedQuestionData.value?.contents && loadedQuestionData.value.contents.length > 0) {
@@ -437,25 +382,13 @@ const storageSolvedKey = computed(() => {
 });
 
 const isSolved = computed(() => {
-  const currentQId = props.questionId || loadedQuestionData.value?.id;
-  const currentSlug = props.questionSlug || loadedQuestionData.value?.slug;
-
-  // 1. If submissions have been loaded, validate strictly against submission history
-  if (isSubmissionsLoaded.value) {
-    return submissionList.value.some(s => {
-      if (s.question_id && (currentQId || currentSlug)) {
-        if (s.question_id !== currentQId && s.question_id !== currentSlug) {
-          return false;
-        }
-      }
-      return s.status === 'passed' || (s.casesPassed === s.totalCases && s.totalCases > 0);
-    });
-  }
-
-  // 2. If locally marked solved in current session (e.g. freshly submitted)
+  // 1. If locally marked solved in current session (e.g. freshly passed all test cases)
   if (isLocallySolved.value) return true;
 
-  // 3. Fallback to localStorage only while initial network fetch is pending
+  // 2. Server validated status from Supabase
+  if (isSolvedLoaded.value) return isServerSolved.value;
+
+  // 3. Fallback to localStorage while initial network fetch is pending
   if (typeof window !== 'undefined' && storageSolvedKey.value) {
     if (localStorage.getItem(storageSolvedKey.value) === 'true') {
       return true;
@@ -518,24 +451,6 @@ const problemDisplayTitle = computed(() => {
   return cleaned || raw || 'Problem'
 });
 
-// Submissions state
-const submissionList = ref([]);
-
-
-
-function formatTimeAgo(dateStr) {
-  if (!dateStr) return 'Just now'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const sec = Math.floor(diff / 1000)
-  if (sec < 60) return 'Just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min}m ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr}h ago`
-  const days = Math.floor(hr / 24)
-  return `${days}d ago`
-}
-
 async function fetchQuestionData() {
   if (!props.questionSlug && !props.questionId) {
     isLoadingQuestion.value = false;
@@ -588,10 +503,6 @@ async function fetchQuestionData() {
           }
         }
 
-        if (!hasCustomUserCode && qStarter) {
-          editorCode.value = qStarter;
-        }
-
         if (data.question.language) {
           editorLang.value = data.question.language;
         }
@@ -614,13 +525,13 @@ async function fetchQuestionData() {
   }
 }
 
-async function fetchSubmissions() {
+async function fetchSolvedStatus() {
   const targetId = props.questionId || loadedQuestionData.value?.id
   const targetSlug = props.questionSlug || loadedQuestionData.value?.slug
   if (!targetId && !targetSlug) {
-    submissionList.value = []
+    isServerSolved.value = false
     isLocallySolved.value = false
-    isSubmissionsLoaded.value = true
+    isSolvedLoaded.value = true
     return
   }
 
@@ -640,115 +551,80 @@ async function fetchSubmissions() {
     const res = await fetch(`/api/submissions?${qParam}`, { headers })
     if (res.ok) {
       const data = await res.json()
-      if (Array.isArray(data.submissions)) {
-        submissionList.value = data.submissions.map(sub => ({
-          id: sub.id,
-          question_id: sub.question_id,
-          status: sub.status,
-          score: `${sub.cases_passed} / ${sub.total_cases}`,
-          casesPassed: sub.cases_passed,
-          totalCases: sub.total_cases,
-          language: (editorLang.value || 'java').toUpperCase(),
-          time: formatTimeAgo(sub.created_at),
-          code: sub.submitted_code
-        }))
-
-        const hasPassed = submissionList.value.some(s => {
-          if (s.question_id && (targetId || targetSlug)) {
-            if (s.question_id !== targetId && s.question_id !== targetSlug) {
-              return false
-            }
-          }
-          return s.status === 'passed' || (s.casesPassed === s.totalCases && s.totalCases > 0)
-        })
-
-        isLocallySolved.value = hasPassed
+      const solved = !!data.isSolved
+      isServerSolved.value = solved
+      if (solved) {
+        isLocallySolved.value = true
         if (typeof window !== 'undefined' && storageSolvedKey.value) {
           try {
-            if (hasPassed) {
-              localStorage.setItem(storageSolvedKey.value, 'true');
-            } else {
-              localStorage.removeItem(storageSolvedKey.value);
-            }
+            localStorage.setItem(storageSolvedKey.value, 'true')
           } catch (e) {}
         }
       } else {
-        submissionList.value = []
-        isLocallySolved.value = false
-        if (typeof window !== 'undefined' && storageSolvedKey.value) {
-          try { localStorage.removeItem(storageSolvedKey.value) } catch (e) {}
+        if (!isLocallySolved.value && typeof window !== 'undefined' && storageSolvedKey.value) {
+          try {
+            localStorage.removeItem(storageSolvedKey.value)
+          } catch (e) {}
         }
       }
     } else {
-      submissionList.value = []
-      isLocallySolved.value = false
-      if (typeof window !== 'undefined' && storageSolvedKey.value) {
-        try { localStorage.removeItem(storageSolvedKey.value) } catch (e) {}
-      }
+      isServerSolved.value = false
     }
   } catch (err) {
-    console.warn('[Slide] Could not fetch submissions:', err)
+    console.warn('[Slide] Could not fetch question solved status:', err)
   } finally {
-    isSubmissionsLoaded.value = true
+    isSolvedLoaded.value = true
   }
 }
 
-async function handleSubmission(eventData) {
-  const { casesPassed, totalCases, status, code } = eventData
-  const scoreText = `${casesPassed} / ${totalCases}`
-  const isFullPass = (status === 'passed' || (casesPassed === totalCases && totalCases > 0))
+async function handleTestEvaluation(eventData) {
+  const { casesPassed, totalCases, allPassed, status, code } = eventData || {}
+  const passed = parseInt(casesPassed, 10) || 0
+  const total = parseInt(totalCases, 10) || 0
+  const isQuestionSolved = (allPassed === true || status === 'passed' || (passed >= total && total > 0))
 
-  if (isFullPass) {
-    isLocallySolved.value = true;
+  if (isQuestionSolved) {
+    isLocallySolved.value = true
+    isServerSolved.value = true
+
     if (typeof window !== 'undefined' && storageSolvedKey.value) {
       try {
-        localStorage.setItem(storageSolvedKey.value, 'true');
+        localStorage.setItem(storageSolvedKey.value, 'true')
       } catch (e) {}
     }
-  }
 
-  // Optimistic UI update
-  submissionList.value.unshift({
-    id: `sub-temp-${Date.now()}`,
-    question_id: props.questionId || loadedQuestionData.value?.id || props.questionSlug || loadedQuestionData.value?.slug,
-    status,
-    score: scoreText,
-    casesPassed,
-    totalCases,
-    language: (editorLang.value || 'java').toUpperCase(),
-    time: 'Just now',
-    code
-  })
-
-  // Post to backend
-  try {
-    const headers = { 'Content-Type': 'application/json' }
-    if (authState.idToken) headers['Authorization'] = `Bearer ${authState.idToken}`
-    if (authState.userEmail) headers['x-user-email'] = authState.userEmail
-
-    const payload = {
-      questionId: props.questionId || loadedQuestionData.value?.id,
-      questionSlug: props.questionSlug || loadedQuestionData.value?.slug,
-      casesPassed,
-      totalCases,
-      submittedCode: code || null
+    // Broadcast global event so deck header and modal counters update instantaneously
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('question-solved', {
+        detail: {
+          questionId: props.questionId || loadedQuestionData.value?.id,
+          questionSlug: props.questionSlug || loadedQuestionData.value?.slug
+        }
+      }))
     }
 
-    const res = await fetch('/api/submissions', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload)
-    })
+    // Record solved status in Supabase
+    try {
+      const headers = { 'Content-Type': 'application/json' }
+      if (authState.idToken) headers['Authorization'] = `Bearer ${authState.idToken}`
+      if (authState.userEmail) headers['x-user-email'] = authState.userEmail
 
-    if (res.ok) {
-      const result = await res.json()
-      if (result && result.submission) {
-        submissionList.value[0].id = result.submission.id
-        submissionList.value[0].status = result.submission.status
+      const payload = {
+        questionId: props.questionId || loadedQuestionData.value?.id,
+        questionSlug: props.questionSlug || loadedQuestionData.value?.slug,
+        casesPassed: passed,
+        totalCases: total,
+        allPassed: true
       }
+
+      await fetch('/api/submissions', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      })
+    } catch (err) {
+      console.error('[Slide] Failed to record solved status in Supabase:', err)
     }
-  } catch (err) {
-    console.error('[Slide] Failed to record submission:', err)
   }
 }
 
@@ -759,19 +635,10 @@ function handleResultsUpdate(results) {
 watch(
   [() => props.questionId, () => props.questionSlug, () => authState.isLoggedIn],
   async () => {
-    isSubmissionsLoaded.value = false
+    isSolvedLoaded.value = false
     isLocallySolved.value = false
     await fetchQuestionData()
-    await fetchSubmissions()
-  }
-)
-
-watch(
-  () => props.starterCode,
-  (newCode) => {
-    if (newCode) {
-      editorCode.value = newCode
-    }
+    await fetchSolvedStatus()
   }
 )
 
@@ -795,7 +662,7 @@ onMounted(async () => {
     } catch (e) {}
   }
   await fetchQuestionData()
-  await fetchSubmissions()
+  await fetchSolvedStatus()
 })
 
 // Copy helper
@@ -972,6 +839,20 @@ const parsedProblem = computed(() => {
   align-items: center;
   gap: 4px;
   font-size: 0.66rem;
+}
+
+.edu-topic-badge {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.edu-topic-text {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .edu-crumb {
@@ -1515,85 +1396,7 @@ div.edu-explanation-title {
   color: #1e40af;
 }
 
-/* ── Submissions Table ───────────────────────────────────────────────── */
-.edu-tab-sub {
-  margin: 2px 0 0 0;
-  font-size: 0.66rem;
-  color: #64748b;
-}
-
-.edu-empty-subs {
-  padding: 24px;
-  text-align: center;
-  color: #64748b;
-  background: #f8fafc;
-  border-radius: 6px;
-  border: 1px dashed #cbd5e1;
-  font-size: 0.72rem;
-}
-
-.edu-table-container {
-  overflow-x: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-}
-
-.edu-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.7rem;
-  text-align: left;
-}
-
-.edu-table th {
-  background: #f8fafc;
-  padding: 6px 12px;
-  font-weight: 700;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.edu-table td {
-  padding: 7px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #1e293b;
-}
-
-.edu-status-badge {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.62rem;
-  font-weight: 700;
-}
-
-.edu-status-badge--passed {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.edu-status-badge--partial {
-  background: #fef3c7;
-  color: #b45309;
-}
-
-.edu-status-badge--failed {
-  background: #fee2e2;
-  color: #be123c;
-}
-
-.edu-score-text {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-weight: 700;
-}
-
-.edu-text-muted {
-  color: #94a3b8;
-}
-
-.edu-text-success {
-  color: #15803d;
-}
+/* ── Solved Tag & Header Styles ──────────────────────────────────────── */
 
 /* ── Leaderboard ─────────────────────────────────────────────────────── */
 .edu-table-row--top td {

@@ -225,6 +225,76 @@ async function fetchQuestions() {
   }
 }
 
+// ── Topic Management State & Methods ──────────────────────────────────────────
+const topicsList = ref([])
+const isLoadingTopics = ref(false)
+const showAddTopicModal = ref(false)
+const newTopicName = ref('')
+const isCreatingTopic = ref(false)
+
+async function fetchTopics() {
+  isLoadingTopics.value = true
+  try {
+    const res = await fetch('/api/topics')
+    if (res.ok) {
+      const data = await res.json()
+      topicsList.value = (data.topics || []).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+    } else {
+      const resFallback = await fetch('/api/questions?topics=true')
+      if (resFallback.ok) {
+        const data = await resFallback.json()
+        topicsList.value = (data.topics || []).sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+      }
+    }
+  } catch (err) {
+    console.warn('[AdminQuestionPanel] Could not load topics:', err)
+  } finally {
+    isLoadingTopics.value = false
+  }
+}
+
+async function handleCreateTopic() {
+  const name = newTopicName.value.trim()
+  if (!name) return
+  isCreatingTopic.value = true
+  try {
+    const headers = { 'Content-Type': 'application/json' }
+    if (authState.idToken) headers['Authorization'] = `Bearer ${authState.idToken}`
+    if (authState.userEmail) headers['x-user-email'] = authState.userEmail
+
+    const res = await fetch('/api/topics', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name })
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      if (data.topic) {
+        const existingIdx = topicsList.value.findIndex(t => t.name.toLowerCase() === data.topic.name.toLowerCase())
+        if (existingIdx >= 0) {
+          topicsList.value[existingIdx] = data.topic
+        } else {
+          topicsList.value.push(data.topic)
+        }
+        form.topic = data.topic.name
+        newTopicName.value = ''
+        showAddTopicModal.value = false
+        successMessage.value = `Topic '${data.topic.name}' added and selected.`
+        setTimeout(() => { successMessage.value = '' }, 3000)
+      }
+    } else {
+      const err = await res.json()
+      errorMessage.value = err.error || 'Failed to create topic.'
+      setTimeout(() => { errorMessage.value = '' }, 4000)
+    }
+  } catch (err) {
+    errorMessage.value = 'Failed to create topic.'
+  } finally {
+    isCreatingTopic.value = false
+  }
+}
+
 // ── Edit Question ─────────────────────────────────────────────────────────────
 function startEditQuestion(question) {
   editingQuestionId.value = question.id || question.slug
@@ -233,6 +303,13 @@ function startEditQuestion(question) {
   form.title = question.title || ''
   form.difficulty = question.difficulty || 'easy'
   form.topic = question.topic || ''
+  if (form.topic && !topicsList.value.some(t => t.name.toLowerCase() === form.topic.toLowerCase())) {
+    topicsList.value.push({
+      id: question.topic_id || `temp-${Date.now()}`,
+      name: form.topic,
+      display_order: 99
+    })
+  }
   form.subTopic = question.sub_topic || ''
   form.language = question.language || 'java'
   form.description = (question.description || question.task || '').replace(/<br\s*\/?>/gi, '\n')
@@ -281,6 +358,7 @@ function cancelEdit() {
 
 function resetForm() {
   form.title = ''
+  form.topic = topicsList.value.length > 0 ? topicsList.value[0].name : 'Arrays'
   form.subTopic = ''
   form.description = ''
   form.explanation = ''
@@ -535,6 +613,7 @@ onMounted(() => {
     window.addEventListener('popstate', checkRoute)
   }
   fetchQuestions()
+  fetchTopics()
 })
 </script>
 
@@ -722,13 +801,27 @@ onMounted(() => {
 
               <div class="edu-form-grid-2 mt-3">
                 <div class="edu-form-group">
-                  <label class="edu-form-label">Topic / Category</label>
-                  <input
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <label class="edu-form-label" style="margin-bottom: 0;">Topic / Category <span class="required">*</span></label>
+                    <button
+                      type="button"
+                      class="edu-topic-link"
+                      @click="showAddTopicModal = true"
+                      title="Add a new topic to table"
+                    >
+                      + Add New Topic
+                    </button>
+                  </div>
+                  <select
                     v-model="form.topic"
-                    type="text"
-                    placeholder="e.g. Arrays, Strings, Core Concepts"
-                    class="edu-form-input"
-                  />
+                    class="edu-form-select"
+                    required
+                  >
+                    <option value="" disabled>-- Select Topic --</option>
+                    <option v-for="t in topicsList" :key="t.id" :value="t.name">
+                      {{ t.name }}
+                    </option>
+                  </select>
                 </div>
 
                 <div class="edu-form-group">
@@ -1188,6 +1281,55 @@ onMounted(() => {
       </div>
     </div>
   </Transition>
+
+  <!-- ── Add New Topic Dialog Modal ────────────────────────────────────── -->
+  <Transition name="edu-modal-fade">
+    <div v-if="showAddTopicModal" class="edu-confirm-overlay" @click.self="showAddTopicModal = false">
+      <div class="edu-confirm-modal">
+        <div class="edu-confirm-header">
+          <div class="edu-confirm-icon" style="background: #e0e7ff; color: #4338ca;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="edu-confirm-title">Add New Topic</h3>
+            <p class="edu-confirm-subtitle">Topic will be saved to the database table</p>
+          </div>
+        </div>
+
+        <div class="edu-confirm-body">
+          <label class="edu-form-label">Topic Name <span class="required">*</span></label>
+          <input
+            v-model="newTopicName"
+            type="text"
+            placeholder="e.g. Dynamic Programming, Trees & Graphs"
+            class="edu-form-input mt-1"
+            @keyup.enter="handleCreateTopic"
+            autofocus
+          />
+          <p class="edu-card-sub mt-2">
+            The topic will be available to pick for all new and existing questions.
+          </p>
+        </div>
+
+        <div class="edu-confirm-footer">
+          <button type="button" class="edu-btn-ghost" @click="showAddTopicModal = false" :disabled="isCreatingTopic">
+            Cancel
+          </button>
+          <button 
+            type="button" 
+            class="edu-btn-primary" 
+            @click="handleCreateTopic" 
+            :disabled="!newTopicName.trim() || isCreatingTopic"
+          >
+            <span v-if="isCreatingTopic" class="edu-spinner"></span>
+            <span v-else>Save Topic</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -1495,6 +1637,23 @@ onMounted(() => {
   font-size: 0.68rem;
   font-weight: 600;
   color: #334155;
+}
+
+.edu-topic-link {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  font-size: 0.64rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.edu-topic-link:hover {
+  color: #3730a3;
+  text-decoration: underline;
 }
 
 .edu-form-sublabel {

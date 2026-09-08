@@ -12,6 +12,8 @@
 import {
   getQuestions,
   getQuestionByIdOrSlug,
+  getTopics,
+  createTopic,
   upsertQuestion,
   deleteQuestion,
   reorderQuestions,
@@ -63,6 +65,19 @@ export default async function handler(req, res) {
       const url = new URL(req.url, 'http://localhost')
       const id = url.searchParams.get('id') || req.query?.id
       const slug = url.searchParams.get('slug') || req.query?.slug
+      const wantsTopics = (url.searchParams.get('topics') || req.query?.topics) === 'true'
+      if (wantsTopics) {
+        const topics = await getTopics()
+        return res.status(200).json({
+          count: topics.length,
+          topics: topics.map(t => ({
+            id: t.id,
+            name: t.name,
+            display_order: t.display_order ?? 0
+          }))
+        })
+      }
+
       const includeInactive = (url.searchParams.get('include_inactive') || req.query?.include_inactive) === 'true'
 
       if (id || slug) {

@@ -1,17 +1,18 @@
 /**
  * /api/submissions
  *
- * Serverless API handler and Vite dev middleware for recording code submissions and tracking progress.
+ * Serverless API handler and Vite dev middleware for tracking solved questions.
+ * A question is marked as solved in Supabase when all test cases are passed.
  *
  * Methods:
- *   - GET: Fetches submissions history for the authenticated user, or aggregated progress across questions.
- *          Optional query params: `?question_id=...` or `?progress=true`
- *   - POST: Records a new submission with test case evaluation results and derives status.
+ *   - GET: Fetches solved question status for a specific question or aggregated user progress.
+ *          Query params: `?question_id=...`, `?question_slug=...`, or `?progress=true`
+ *   - POST: Marks question as solved in Supabase when all test cases pass.
  */
 
 import {
-  recordSubmission,
-  getSubmissions,
+  recordQuestionSolved,
+  getSolvedQuestions,
   getUserProgress,
   findUserByEmail,
   verifyGoogleToken
@@ -63,7 +64,7 @@ export default async function handler(req, res) {
   try {
     const requester = await authenticateRequester(req)
 
-    // ── 1. GET: Retrieve Submissions or Progress ──────────────────────────────
+    // ── 1. GET: Retrieve Solved Status or Aggregated Progress ───────────────────
     if (req.method === 'GET') {
       const url = new URL(req.url, 'http://localhost')
       const questionId = url.searchParams.get('question_id') || req.query?.question_id
@@ -82,27 +83,30 @@ export default async function handler(req, res) {
         return res.status(200).json(progress)
       }
 
-      const submissions = await getSubmissions({
+      const solvedList = await getSolvedQuestions({
         userId: targetUserId,
         userEmail: requester?.email,
         questionId,
         questionSlug
       })
 
+      const isSolved = solvedList.length > 0
       return res.status(200).json({
-        count: submissions.length,
-        submissions
+        isSolved,
+        solvedAt: solvedList[0]?.solved_at || null,
+        count: solvedList.length,
+        submissions: solvedList // backward-compatibility
       })
     }
 
-    // ── 2. POST: Record Code Submission ───────────────────────────────────────
+    // ── 2. POST: Record Question Solved ─────────────────────────────────────────
     if (req.method === 'POST') {
       const {
         questionId,
         questionSlug,
         casesPassed,
         totalCases,
-        submittedCode = '',
+        allPassed,
         userEmail: bodyEmail
       } = req.body || {}
 
@@ -110,35 +114,41 @@ export default async function handler(req, res) {
       const userId = requester?.id
 
       if (!userId && !userEmail) {
-        return res.status(401).json({ error: 'Unauthorized: Valid user session required to record submission.' })
+        return res.status(401).json({ error: 'Unauthorized: Valid user session required.' })
       }
 
       if (!questionId && !questionSlug) {
         return res.status(400).json({ error: 'Bad Request: questionId or questionSlug is required.' })
       }
 
-      if (casesPassed === undefined || casesPassed === null) {
-        return res.status(400).json({ error: 'Bad Request: casesPassed is required.' })
+      const passed = parseInt(casesPassed, 10) || 0
+      const total = parseInt(totalCases, 10) || 0
+      const isQuestionSolved = allPassed === true || (passed >= total && total > 0)
+
+      if (!isQuestionSolved) {
+        return res.status(200).json({
+          success: false,
+          isSolved: false,
+          message: 'Question not solved. All test cases must pass to mark as solved.'
+        })
       }
 
-      const submission = await recordSubmission({
+      const solvedRecord = await recordQuestionSolved({
         userId,
         userEmail,
         questionId,
-        questionSlug,
-        casesPassed,
-        totalCases,
-        submittedCode: submittedCode || null
+        questionSlug
       })
 
       // Fetch updated progress summary
-      const progress = await getUserProgress({ userId: submission.user_id, userEmail })
+      const progress = await getUserProgress({ userId: solvedRecord.user_id, userEmail })
 
       return res.status(200).json({
         success: true,
-        message: `Submission recorded with status '${submission.status}'.`,
-        submission,
-        progress: progress.progress[submission.question_id] || null
+        isSolved: true,
+        message: 'Question solved successfully and saved to database.',
+        solved: solvedRecord,
+        progress: progress.progress[solvedRecord.question_id] || null
       })
     }
 
