@@ -23,29 +23,60 @@ async function authenticateRequester(req) {
   const rawEmail = req.headers['x-user-email'] || req.body?.userEmail || req.query?.user_email
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    if (rawEmail) return await findUserByEmail(rawEmail)
+    if (rawEmail) {
+      const u = await findUserByEmail(rawEmail)
+      return u || {
+        id: `user-${rawEmail.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_')}`,
+        email: rawEmail.trim().toLowerCase(),
+        role: 'student'
+      }
+    }
     return null
   }
 
   const token = authHeader.split(' ')[1]
   if (!token) {
-    if (rawEmail) return await findUserByEmail(rawEmail)
+    if (rawEmail) {
+      const u = await findUserByEmail(rawEmail)
+      return u || {
+        id: `user-${rawEmail.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_')}`,
+        email: rawEmail.trim().toLowerCase(),
+        role: 'student'
+      }
+    }
     return null
   }
 
   if (token.startsWith('zoho:')) {
-    if (rawEmail) return await findUserByEmail(rawEmail)
+    if (rawEmail) {
+      const u = await findUserByEmail(rawEmail)
+      return u || {
+        id: `user-${rawEmail.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_')}`,
+        email: rawEmail.trim().toLowerCase(),
+        role: 'student'
+      }
+    }
   }
 
   const googlePayload = await verifyGoogleToken(token)
   if (googlePayload && googlePayload.email) {
     const isVerified = googlePayload.email_verified === 'true' || googlePayload.email_verified === true
     if (!isVerified) return null
-    return await findUserByEmail(googlePayload.email)
+    const u = await findUserByEmail(googlePayload.email)
+    return u || {
+      id: `user-${googlePayload.email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_')}`,
+      email: googlePayload.email.trim().toLowerCase(),
+      role: 'student'
+    }
   }
 
   if (rawEmail) {
-    return await findUserByEmail(rawEmail)
+    const u = await findUserByEmail(rawEmail)
+    return u || {
+      id: `user-${rawEmail.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_')}`,
+      email: rawEmail.trim().toLowerCase(),
+      role: 'student'
+    }
   }
 
   return null

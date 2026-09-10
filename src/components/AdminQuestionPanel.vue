@@ -128,6 +128,7 @@ const form = reactive({
   title: '',
   difficulty: 'easy',
   topic: 'Arrays',
+  priority: 1,
   subTopic: '',
   language: 'java',
   description: '',
@@ -303,6 +304,7 @@ function startEditQuestion(question) {
   form.title = question.title || ''
   form.difficulty = question.difficulty || 'easy'
   form.topic = question.topic || ''
+  form.priority = question.priority || question.display_order || 1
   if (form.topic && !topicsList.value.some(t => t.name.toLowerCase() === form.topic.toLowerCase())) {
     topicsList.value.push({
       id: question.topic_id || `temp-${Date.now()}`,
@@ -359,6 +361,7 @@ function cancelEdit() {
 function resetForm() {
   form.title = ''
   form.topic = topicsList.value.length > 0 ? topicsList.value[0].name : 'Arrays'
+  form.priority = 1
   form.subTopic = ''
   form.description = ''
   form.explanation = ''
@@ -421,7 +424,8 @@ async function saveQuestion() {
     slug: autoSlug.value,
     description: form.description.trim(),
     difficulty: form.difficulty,
-    topic: form.topic.trim() || 'Core Concepts',
+    topic: form.topic.trim() || 'Arrays',
+    priority: Number(form.priority) || 1,
     sub_topic: form.subTopic.trim() || form.title.trim(),
     language: form.language,
     starter_code: form.starterCode,
@@ -799,19 +803,9 @@ onMounted(() => {
                 </div>
               </div>
 
-              <div class="edu-form-grid-2 mt-3">
+              <div class="edu-form-grid-3 mt-3">
                 <div class="edu-form-group">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <label class="edu-form-label" style="margin-bottom: 0;">Topic / Category <span class="required">*</span></label>
-                    <button
-                      type="button"
-                      class="edu-topic-link"
-                      @click="showAddTopicModal = true"
-                      title="Add a new topic to table"
-                    >
-                      + Add New Topic
-                    </button>
-                  </div>
+                  <label class="edu-form-label">Topic / Category <span class="required">*</span></label>
                   <select
                     v-model="form.topic"
                     class="edu-form-select"
@@ -822,6 +816,18 @@ onMounted(() => {
                       {{ t.name }}
                     </option>
                   </select>
+                </div>
+
+                <div class="edu-form-group">
+                  <label class="edu-form-label">Priority (Order in Topic) <span class="required">*</span></label>
+                  <input
+                    v-model.number="form.priority"
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    class="edu-form-input"
+                    required
+                  />
                 </div>
 
                 <div class="edu-form-group">
@@ -1107,7 +1113,7 @@ onMounted(() => {
                   <tr>
                     <th style="width: 80px; text-align: center;">Order</th>
                     <th>Title & Slug</th>
-                    <th>Topic</th>
+                    <th>Topic & Priority</th>
                     <th>Difficulty</th>
                     <th>Test Cases</th>
                     <th>Language</th>
@@ -1154,8 +1160,11 @@ onMounted(() => {
                       <div class="edu-table-slug">{{ q.slug }}</div>
                     </td>
 
-                    <!-- Topic -->
-                    <td>{{ q.topic || 'General' }}</td>
+                    <!-- Topic & Priority -->
+                    <td>
+                      <div style="font-weight: 600; color: #1e293b;">{{ q.topic || 'General' }}</div>
+                      <div class="font-mono text-xs" style="color: #64748b;">Priority {{ q.priority || q.display_order || 1 }}</div>
+                    </td>
 
                     <!-- Difficulty -->
                     <td>

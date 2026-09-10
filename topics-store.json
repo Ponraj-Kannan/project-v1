@@ -1,47 +1,52 @@
 [
   {
-    "id": "8b03f493-6051-4aee-91d7-065e941a85f9",
-    "name": "Decision-making statements",
+    "id": "66d11752-20ab-48fe-88f2-9c335262ef57",
+    "name": "Inputs",
     "display_order": 1
   },
   {
     "id": "0ca140b9-a466-434e-8f76-d11832c35751",
-    "name": "Arrays",
+    "name": "Outputs",
     "display_order": 2
   },
   {
-    "id": "8a1cb44b-a608-4729-8db3-e38def002dba",
-    "name": "Strings",
+    "id": "6d7bbce7-23de-44a3-8bbf-fa68a3f689f9",
+    "name": "Operators",
     "display_order": 3
   },
   {
-    "id": "6d7bbce7-23de-44a3-8bbf-fa68a3f689f9",
-    "name": "Loops & Iteration",
+    "id": "8a1cb44b-a608-4729-8db3-e38def002dba",
+    "name": "Type Casting",
     "display_order": 4
   },
   {
-    "id": "66d11752-20ab-48fe-88f2-9c335262ef57",
-    "name": "Methods & Functions",
+    "id": "8b03f493-6051-4aee-91d7-065e941a85f9",
+    "name": "Decision-making Statements",
     "display_order": 5
   },
   {
-    "id": "c2b281ab-f9f5-41a0-b9dd-2632a30c19ba",
-    "name": "Object-Oriented Programming",
+    "id": "8c146688-03b9-4afb-8668-d382b78b9d5e",
+    "name": "Control Statements",
     "display_order": 6
   },
   {
     "id": "9963ab60-2f29-46b4-ab6d-a670253649e0",
-    "name": "Recursion",
+    "name": "Arrays",
     "display_order": 7
   },
   {
     "id": "a7bbae11-253c-4cdd-bb75-10ffd7fdd668",
-    "name": "Data Structures",
+    "name": "Strings",
     "display_order": 8
   },
   {
-    "id": "8c146688-03b9-4afb-8668-d382b78b9d5e",
-    "name": "Core Concepts",
+    "id": "c2b281ab-f9f5-41a0-b9dd-2632a30c19ba",
+    "name": "Methods / Functions",
     "display_order": 9
+  },
+  {
+    "id": "aa998cdd-cc76-48cd-89cc-7ed0d5887e22",
+    "name": "Recursion",
+    "display_order": 10
   }
 ]

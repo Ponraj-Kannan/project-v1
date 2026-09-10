@@ -79,6 +79,7 @@ export default async function handler(req, res) {
       }
 
       const includeInactive = (url.searchParams.get('include_inactive') || req.query?.include_inactive) === 'true'
+      const topic = url.searchParams.get('topic') || req.query?.topic
 
       if (id || slug) {
         const question = await getQuestionByIdOrSlug(id || slug)
@@ -88,7 +89,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ question })
       }
 
-      const questions = await getQuestions({ includeInactive })
+      const questions = await getQuestions({ includeInactive, topic })
 
       return res.status(200).json({
         count: questions.length,

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useNav, useSlideContext } from '@slidev/client'
 import LoginOverlay from './components/LoginOverlay.vue'
 import AdminQuestionPanel from './components/AdminQuestionPanel.vue'
@@ -66,6 +66,44 @@ async function handleLogout() {
   }
 }
 
+// ── Overall Question Solved Progress ───────────────────────────────────────
+const overallSolved = ref(0)
+const overallTotal = ref(0)
+const overallPercent = computed(() => {
+  if (overallTotal.value === 0) return 0
+  return Math.round((overallSolved.value / overallTotal.value) * 100)
+})
+
+async function fetchOverallProgress() {
+  if (!authState.isLoggedIn) return
+  try {
+    const headers = {}
+    if (authState.idToken) {
+      headers['Authorization'] = `Bearer ${authState.idToken}`
+    }
+    if (authState.userEmail) {
+      headers['x-user-email'] = authState.userEmail
+    }
+
+    const res = await fetch('/api/submissions?progress=true', { headers })
+    if (res.ok) {
+      const data = await res.json()
+      if (data) {
+        overallTotal.value = Number(data.totalQuestions) || 0
+        overallSolved.value = Number(data.completedQuestions) || 0
+      }
+    }
+  } catch (err) {
+    console.warn('[global-bottom] Could not fetch overall progress:', err)
+  }
+}
+
+watch(() => [authState.isLoggedIn, authState.userEmail], ([loggedIn]) => {
+  if (loggedIn) {
+    fetchOverallProgress()
+  }
+}, { immediate: true })
+
 // ── Alt+T — jump to roadmap (slide 1) from anywhere ───────────────────────
 function handleAltT(e) {
   if (e.altKey && (e.key === 't' || e.key === 'T')) {
@@ -74,8 +112,20 @@ function handleAltT(e) {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', handleAltT))
-onUnmounted(() => window.removeEventListener('keydown', handleAltT))
+onMounted(() => {
+  window.addEventListener('keydown', handleAltT)
+  window.addEventListener('question-solved', fetchOverallProgress)
+  window.addEventListener('questions-updated', fetchOverallProgress)
+  if (authState.isLoggedIn) {
+    fetchOverallProgress()
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleAltT)
+  window.removeEventListener('question-solved', fetchOverallProgress)
+  window.removeEventListener('questions-updated', fetchOverallProgress)
+})
 </script>
 
 <template>
@@ -88,6 +138,44 @@ onUnmounted(() => window.removeEventListener('keydown', handleAltT))
 
     <!-- Slides Footer - only visible when logged in -->
     <div class="fp-footer" v-if="authState.isLoggedIn" >
+      <!-- Left: Overall Question Solved Progress -->
+      <div class="fp-left-section">
+        <div 
+          v-if="overallTotal > 0" 
+          class="fp-overall-progress" 
+          :class="{ 'fp-overall-progress--active': overallSolved > 0, 'fp-overall-progress--done': overallPercent === 100 }"
+          :title="`Overall Practice Progress: ${overallSolved} of ${overallTotal} questions solved (${overallPercent}%)`"
+        >
+          <span class="fp-progress-icon-wrap">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" class="fp-progress-icon">
+              <circle cx="8" cy="8" r="6.25"/>
+              <path d="m5.2 8 2 2 3.6-4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+
+          <span class="fp-progress-label">Overall Solved</span>
+
+          <span class="fp-progress-dot"></span>
+
+          <span class="fp-progress-counts">
+            <span class="fp-progress-solved">{{ overallSolved }}</span>
+            <span class="fp-progress-slash">/</span>
+            <span class="fp-progress-total">{{ overallTotal }}</span>
+          </span>
+
+          <div class="fp-progress-track">
+            <div class="fp-progress-bar" :style="{ width: `${overallPercent}%` }"></div>
+          </div>
+
+          <span 
+            class="fp-progress-pct" 
+            :class="{ 'fp-progress-pct--active': overallSolved > 0, 'fp-progress-pct--done': overallPercent === 100 }"
+          >
+            {{ overallPercent }}%
+          </span>
+        </div>
+      </div>
+
       <div class="fp-right-section">
         <!-- Roadmap Home Button -->
         <button
@@ -208,7 +296,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleAltT))
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: right;
+  justify-content: space-between;
   padding: 0 1.5rem;
   z-index: 100;
   font-family: 'Inter', system-ui, sans-serif;
@@ -218,6 +306,136 @@ onUnmounted(() => window.removeEventListener('keydown', handleAltT))
   -webkit-backdrop-filter: blur(20px);
   background-color: rgba(255, 255, 255, 0.95);
   box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.fp-left-section {
+  display: flex;
+  align-items: center;
+}
+
+.fp-overall-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 8px 0 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  color: #475569;
+  user-select: none;
+  cursor: default;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fp-overall-progress:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.06);
+}
+
+.fp-overall-progress--done {
+  border-color: #a7f3d0;
+  background: #f0fdf4;
+}
+
+.fp-progress-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  transition: color 0.2s ease;
+  line-height: 0;
+}
+
+.fp-overall-progress--active .fp-progress-icon-wrap {
+  color: #10b981;
+}
+
+.fp-progress-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.fp-progress-label {
+  font-weight: 500;
+  color: #64748b;
+  letter-spacing: -0.01em;
+}
+
+.fp-progress-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  flex-shrink: 0;
+}
+
+.fp-progress-counts {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: -0.02em;
+}
+
+.fp-progress-solved {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.fp-progress-slash {
+  margin: 0 2px;
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.fp-progress-total {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.fp-progress-track {
+  width: 46px;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.fp-progress-bar {
+  height: 100%;
+  background: #10b981;
+  border-radius: 9999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fp-progress-pct {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 1px 6px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  transition: all 0.2s ease;
+}
+
+.fp-progress-pct--active {
+  color: #047857;
+  background: #ecfdf5;
+  border-color: #d1fae5;
+}
+
+.fp-progress-pct--done {
+  color: #065f46;
+  background: #d1fae5;
+  border-color: #a7f3d0;
 }
 
 .fp-module {

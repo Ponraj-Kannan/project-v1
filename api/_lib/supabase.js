@@ -58,15 +58,16 @@ const legacySubmissionsPath = path.join(projectRoot, 'submissions-store.json')
 
 // ── Default Seed Topics (Only id, name, display_order) ────────────────────────
 const DEFAULT_TOPICS = [
-  { id: '11111111-0000-0000-0000-000000000001', name: 'Decision-making statements', display_order: 1 },
-  { id: '11111111-0000-0000-0000-000000000002', name: 'Arrays', display_order: 2 },
-  { id: '11111111-0000-0000-0000-000000000003', name: 'Strings', display_order: 3 },
-  { id: '11111111-0000-0000-0000-000000000004', name: 'Loops & Iteration', display_order: 4 },
-  { id: '11111111-0000-0000-0000-000000000005', name: 'Methods & Functions', display_order: 5 },
-  { id: '11111111-0000-0000-0000-000000000006', name: 'Object-Oriented Programming', display_order: 6 },
-  { id: '11111111-0000-0000-0000-000000000007', name: 'Recursion', display_order: 7 },
-  { id: '11111111-0000-0000-0000-000000000008', name: 'Data Structures', display_order: 8 },
-  { id: '11111111-0000-0000-0000-000000000009', name: 'Core Concepts', display_order: 9 }
+  { id: '66d11752-20ab-48fe-88f2-9c335262ef57', name: 'Inputs', display_order: 1 },
+  { id: '0ca140b9-a466-434e-8f76-d11832c35751', name: 'Outputs', display_order: 2 },
+  { id: '6d7bbce7-23de-44a3-8bbf-fa68a3f689f9', name: 'Operators', display_order: 3 },
+  { id: '8a1cb44b-a608-4729-8db3-e38def002dba', name: 'Type Casting', display_order: 4 },
+  { id: '8b03f493-6051-4aee-91d7-065e941a85f9', name: 'Decision-making Statements', display_order: 5 },
+  { id: '8c146688-03b9-4afb-8668-d382b78b9d5e', name: 'Control Statements', display_order: 6 },
+  { id: '9963ab60-2f29-46b4-ab6d-a670253649e0', name: 'Arrays', display_order: 7 },
+  { id: 'a7bbae11-253c-4cdd-bb75-10ffd7fdd668', name: 'Strings', display_order: 8 },
+  { id: 'c2b281ab-f9f5-41a0-b9dd-2632a30c19ba', name: 'Methods / Functions', display_order: 9 },
+  { id: 'aa998cdd-cc76-48cd-89cc-7ed0d5887e22', name: 'Recursion', display_order: 10 }
 ]
 
 // ── Default Seed Questions ────────────────────────────────────────────────────
@@ -79,8 +80,9 @@ const DEFAULT_QUESTIONS = [
     difficulty: 'easy',
     total_test_cases: 5,
     display_order: 1,
+    priority: 1,
     is_active: true,
-    topic: 'Decision-making statements',
+    topic: 'Decision-making Statements',
     sub_topic: 'Practice Problem: Positive Number Check',
     language: 'java',
     starter_code: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int num = sc.nextInt();\n        \n        // Write your if condition here\n        if (num > 0) {\n            System.out.println(num + " is a positive number.");\n        }\n    }\n}`,
@@ -112,9 +114,10 @@ const DEFAULT_QUESTIONS = [
     description: 'Write a Java program that takes an integer num as input and prints the Sum of its Digits.',
     difficulty: 'easy',
     total_test_cases: 6,
-    display_order: 2,
+    display_order: 1,
+    priority: 1,
     is_active: true,
-    topic: 'Decision-making statements',
+    topic: 'Control Statements',
     sub_topic: 'Practice Problem: Sum of Digits',
     language: 'java',
     starter_code: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int num = sc.nextInt();\n        int sum = 0;\n        \n        // Write your logic here to calculate sum of digits\n        int temp = Math.abs(num);\n        while (temp > 0) {\n            sum += temp % 10;\n            temp /= 10;\n        }\n        \n        System.out.println("Sum of digits = " + sum);\n    }\n}`,
@@ -135,6 +138,106 @@ const DEFAULT_QUESTIONS = [
       { text: '<b>Problem:</b> Write a Java program that takes an integer <code>num</code> as input and prints the <b>Sum of its Digits</b>.' },
       { text: '<b>Sample Input:</b> <code>123</code>' },
       { text: '<b>Expected Output:</b><br><code>Sum of digits = 6</code>' }
+    ],
+    score: 10,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '33333333-3333-3333-3333-333333333331',
+    title: 'Find Maximum Element in Array',
+    slug: 'find-maximum-in-array',
+    description: 'Write a Java program to find and print the maximum element present in an integer array.',
+    difficulty: 'easy',
+    total_test_cases: 4,
+    display_order: 1,
+    priority: 1,
+    is_active: true,
+    topic: 'Arrays',
+    sub_topic: 'Practice Problem: Maximum Element',
+    language: 'java',
+    starter_code: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) {\n            arr[i] = sc.nextInt();\n        }\n        \n        // Write logic to find the maximum element\n        int max = arr[0];\n        for (int i = 1; i < n; i++) {\n            if (arr[i] > max) max = arr[i];\n        }\n        System.out.println(max);\n    }\n}`,
+    test_cases: [
+      { id: 1, name: 'Sample 1', input: '5\n10 24 5 89 42', expectedOutput: '89', isHidden: false },
+      { id: 2, name: 'Sample 2', input: '3\n-5 -12 -1', expectedOutput: '-1', isHidden: false },
+      { id: 3, name: 'Hidden 1', input: '1\n99', expectedOutput: '99', isHidden: true },
+      { id: 4, name: 'Hidden 2', input: '4\n100 200 50 150', expectedOutput: '200', isHidden: true }
+    ],
+    task: 'Write a Java program that reads an integer <code>n</code>, followed by <code>n</code> array elements, and outputs the <b>maximum element</b> in the array.',
+    input_format: 'First line: integer <code>n</code>.<br>Second line: <code>n</code> space-separated integers.',
+    constraints: '1 &le; n &le; 10<sup>5</sup><br>-10<sup>9</sup> &le; arr[i] &le; 10<sup>9</sup>',
+    output_format: 'Print the maximum value.',
+    explanation: 'Among 10, 24, 5, 89, 42, the maximum value is 89.',
+    contents: [
+      { text: '<b>Problem:</b> Find and print the maximum element in the given integer array.' },
+      { text: '<b>Sample Input:</b><br><code>5<br>10 24 5 89 42</code>' },
+      { text: '<b>Expected Output:</b><br><code>89</code>' }
+    ],
+    score: 10,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '33333333-3333-3333-3333-333333333332',
+    title: 'Sum of Array Elements',
+    slug: 'sum-of-array-elements',
+    description: 'Write a Java program to compute the total sum of all elements in an integer array.',
+    difficulty: 'easy',
+    total_test_cases: 3,
+    display_order: 2,
+    priority: 2,
+    is_active: true,
+    topic: 'Arrays',
+    sub_topic: 'Practice Problem: Array Sum',
+    language: 'java',
+    starter_code: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        long sum = 0;\n        for (int i = 0; i < n; i++) {\n            arr[i] = sc.nextInt();\n            sum += arr[i];\n        }\n        System.out.println(sum);\n    }\n}`,
+    test_cases: [
+      { id: 1, name: 'Sample 1', input: '4\n1 2 3 4', expectedOutput: '10', isHidden: false },
+      { id: 2, name: 'Sample 2', input: '3\n10 -5 20', expectedOutput: '25', isHidden: false },
+      { id: 3, name: 'Hidden 1', input: '5\n0 0 0 0 0', expectedOutput: '0', isHidden: true }
+    ],
+    task: 'Write a Java program that reads an integer <code>n</code>, followed by <code>n</code> array elements, and outputs the <b>total sum</b>.',
+    input_format: 'First line: integer <code>n</code>.<br>Second line: <code>n</code> space-separated integers.',
+    constraints: '1 &le; n &le; 10<sup>5</sup><br>-10<sup>9</sup> &le; arr[i] &le; 10<sup>9</sup>',
+    output_format: 'Print the sum.',
+    explanation: '1 + 2 + 3 + 4 = 10.',
+    contents: [
+      { text: '<b>Problem:</b> Compute the sum of all elements in the integer array.' },
+      { text: '<b>Sample Input:</b><br><code>4<br>1 2 3 4</code>' },
+      { text: '<b>Expected Output:</b><br><code>10</code>' }
+    ],
+    score: 10,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '33333333-3333-3333-3333-333333333333',
+    title: 'Reverse an Array',
+    slug: 'reverse-an-array',
+    description: 'Write a Java program to reverse the elements of an array and print them separated by space.',
+    difficulty: 'easy',
+    total_test_cases: 3,
+    display_order: 3,
+    priority: 3,
+    is_active: true,
+    topic: 'Arrays',
+    sub_topic: 'Practice Problem: Array Reversal',
+    language: 'java',
+    starter_code: `import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) {\n            arr[i] = sc.nextInt();\n        }\n        for (int i = n - 1; i >= 0; i--) {\n            System.out.print(arr[i] + (i > 0 ? " " : ""));\n        }\n        System.out.println();\n    }\n}`,
+    test_cases: [
+      { id: 1, name: 'Sample 1', input: '4\n1 2 3 4', expectedOutput: '4 3 2 1', isHidden: false },
+      { id: 2, name: 'Sample 2', input: '3\n10 20 30', expectedOutput: '30 20 10', isHidden: false },
+      { id: 3, name: 'Hidden 1', input: '1\n5', expectedOutput: '5', isHidden: true }
+    ],
+    task: 'Write a Java program that reads an integer <code>n</code>, followed by <code>n</code> array elements, and outputs the elements in <b>reverse order</b> separated by space.',
+    input_format: 'First line: integer <code>n</code>.<br>Second line: <code>n</code> space-separated integers.',
+    constraints: '1 &le; n &le; 10<sup>5</sup>',
+    output_format: 'Print reversed array elements separated by single space.',
+    explanation: 'Reverse of [1, 2, 3, 4] is 4 3 2 1.',
+    contents: [
+      { text: '<b>Problem:</b> Output the array in reverse order.' },
+      { text: '<b>Sample Input:</b><br><code>4<br>1 2 3 4</code>' },
+      { text: '<b>Expected Output:</b><br><code>4 3 2 1</code>' }
     ],
     score: 10,
     created_at: new Date().toISOString(),
@@ -606,40 +709,79 @@ export async function verifyGoogleToken(idToken) {
 // ── Question Bank Operations ──────────────────────────────────────────────────
 
 /**
- * Retrieves questions from the questions table, ordered by display_order.
- * @param {Object} options - { includeInactive: boolean }
+ * Retrieves questions from the questions table, filtered optionally by topic and ordered by priority and display_order.
+ * @param {Object} options - { includeInactive: boolean, topic: string }
  */
-export async function getQuestions({ includeInactive = false } = {}) {
+export async function getQuestions({ includeInactive = false, topic = null } = {}) {
   const client = getSupabaseClient()
   if (client) {
     try {
       let query = client
         .from('questions')
         .select('*')
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: true })
 
       if (!includeInactive) {
         query = query.eq('is_active', true)
       }
 
-      const { data, error } = await query
+      if (topic && typeof topic === 'string' && topic.trim()) {
+        query = query.ilike('topic', topic.trim())
+      }
+
+      // Try sorting by priority first, then display_order
+      try {
+        query = query
+          .order('priority', { ascending: true, nullsFirst: false })
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      } catch (e) {
+        query = query
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: true })
+      }
+
+      let { data, error } = await query
+
+      if (error && error.message && error.message.includes('priority')) {
+        let retryQuery = client.from('questions').select('*')
+        if (!includeInactive) retryQuery = retryQuery.eq('is_active', true)
+        if (topic && typeof topic === 'string' && topic.trim()) {
+          retryQuery = retryQuery.ilike('topic', topic.trim())
+        }
+        retryQuery = retryQuery.order('display_order', { ascending: true }).order('created_at', { ascending: true })
+        const retryRes = await retryQuery
+        data = retryRes.data
+        error = retryRes.error
+      }
 
       if (error) {
         console.error('[Supabase Lib] getQuestions error:', error.message)
-        return []
       } else if (Array.isArray(data)) {
+        data.sort((a, b) => {
+          const pA = a.priority ?? a.display_order ?? 0
+          const pB = b.priority ?? b.display_order ?? 0
+          return pA - pB
+        })
         return data
       }
     } catch (err) {
       console.error('[Supabase Lib] getQuestions failed:', err.message)
-      return []
     }
   }
 
   // Fallback to local questions store only if Supabase is unavailable
   const localQuestions = loadLocalQuestions()
-  return includeInactive ? localQuestions : localQuestions.filter(q => q.is_active !== false)
+  let filtered = includeInactive ? localQuestions : localQuestions.filter(q => q.is_active !== false)
+  if (topic && typeof topic === 'string' && topic.trim()) {
+    const norm = topic.trim().toLowerCase()
+    filtered = filtered.filter(q => (q.topic || '').trim().toLowerCase() === norm)
+  }
+  filtered.sort((a, b) => {
+    const pA = a.priority ?? a.display_order ?? 0
+    const pB = b.priority ?? b.display_order ?? 0
+    return pA - pB
+  })
+  return filtered
 }
 
 /**
@@ -741,6 +883,10 @@ export async function upsertQuestion(questionData) {
     }
   }
 
+  const priority = Number.isInteger(Number(questionData.priority)) && Number(questionData.priority) > 0
+    ? Number(questionData.priority)
+    : displayOrder
+
   const payload = {
     title: questionData.title.trim(),
     slug,
@@ -748,6 +894,7 @@ export async function upsertQuestion(questionData) {
     difficulty: questionData.difficulty || 'easy',
     total_test_cases: totalTestCases,
     display_order: displayOrder,
+    priority,
     is_active: questionData.is_active !== undefined ? Boolean(questionData.is_active) : true,
     topic: questionData.topic || '',
     sub_topic: questionData.sub_topic || '',
@@ -791,10 +938,11 @@ export async function upsertQuestion(questionData) {
         .select()
         .single()
 
-      if (error && payload.topic_id && error.message && error.message.includes('topic_id')) {
+      if (error && (error.message.includes('topic_id') || error.message.includes('priority'))) {
         // Fallback if remote schema hasn't executed migration yet
         const safePayload = { ...payload }
-        delete safePayload.topic_id
+        if (error.message.includes('topic_id')) delete safePayload.topic_id
+        if (error.message.includes('priority')) delete safePayload.priority
         const retryRes = await client
           .from('questions')
           .upsert(safePayload, { onConflict: 'slug' })

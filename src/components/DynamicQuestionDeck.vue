@@ -18,7 +18,7 @@
 
         <!-- Topic Display -->
         <div class="deck-topic-badge">
-          <span class="deck-topic-text">{{ currentQuestion?.topic || 'Arrays' }}</span>
+          <span class="deck-topic-text">{{ props.topic || currentQuestion?.topic || 'Practice' }}</span>
         </div>
       </div>
 
@@ -107,8 +107,8 @@
     </div>
 
     <div v-else-if="questions.length === 0" class="deck-state-panel">
-      <p class="deck-empty-title">No Active Questions Found</p>
-      <p class="deck-empty-msg">Questions added to the Supabase <code>questions</code> table will appear here automatically.</p>
+      <p class="deck-empty-title">No Active Questions Found{{ props.topic ? ` for ${props.topic}` : '' }}</p>
+      <p class="deck-empty-msg">Questions added under this topic in the question bank will appear here automatically.</p>
     </div>
 
     <!-- ── Dynamic Question Slide Rendering ─────────────────────────────── -->
@@ -117,7 +117,7 @@
         :hide-top-navbar="true"
         :question-id="currentQuestion.id"
         :question-slug="currentQuestion.slug"
-        :topic="currentQuestion.topic || 'Coding Practice'"
+        :topic="currentQuestion.topic || props.topic || 'Coding Practice'"
         :sub-topic="currentQuestion.sub_topic || currentQuestion.title"
         :difficulty="currentQuestion.difficulty || 'Easy'"
         :score="currentQuestion.score || 10"
@@ -175,7 +175,7 @@
                   <span class="custom-item-num">Q{{ idx + 1 }}</span>
                   <div class="custom-item-details">
                     <span class="custom-item-title">{{ q.title }}</span>
-                    <span class="custom-item-topic">{{ q.topic || 'Practice Problem' }} &bull; {{ (q.language || 'Java').toUpperCase() }}</span>
+                    <span class="custom-item-topic">{{ q.topic || props.topic || 'Practice Problem' }} &bull; {{ (q.language || 'Java').toUpperCase() }}</span>
                   </div>
                 </div>
 
@@ -202,6 +202,13 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import Slide from './Slide.vue'
 import { authState } from '../auth'
+
+const props = defineProps({
+  topic: {
+    type: String,
+    default: ''
+  }
+})
 
 const questions = ref([])
 const currentQuestionIndex = ref(0)
@@ -247,14 +254,32 @@ async function fetchQuestions() {
   errorMessage.value = ''
 
   try {
-    const res = await fetch('/api/questions')
+    const url = props.topic && props.topic.trim()
+      ? `/api/questions?topic=${encodeURIComponent(props.topic.trim())}`
+      : '/api/questions'
+
+    const res = await fetch(url)
     if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch questions`)
 
     const data = await res.json()
-    if (Array.isArray(data.questions) && data.questions.length > 0) {
-      questions.value = data.questions
-    } else {
-      questions.value = []
+    let rawList = Array.isArray(data.questions) ? data.questions : []
+
+    // Client-side filtering safeguard if topic prop is provided
+    if (props.topic && props.topic.trim()) {
+      const targetTopic = props.topic.trim().toLowerCase()
+      rawList = rawList.filter(q => (q.topic || '').trim().toLowerCase() === targetTopic)
+    }
+
+    // Client-side sorting safeguard: arrange strictly based on priority
+    rawList.sort((a, b) => {
+      const pA = a.priority ?? a.display_order ?? 0
+      const pB = b.priority ?? b.display_order ?? 0
+      return pA - pB
+    })
+
+    questions.value = rawList
+    if (currentQuestionIndex.value >= rawList.length) {
+      currentQuestionIndex.value = Math.max(0, rawList.length - 1)
     }
   } catch (err) {
     console.error('[DynamicQuestionDeck] fetchQuestions error:', err)
@@ -406,6 +431,12 @@ watch(currentQuestion, (q) => {
 
 watch(() => authState.isLoggedIn, () => {
   fetchProgress()
+})
+
+watch(() => props.topic, async () => {
+  currentQuestionIndex.value = 0
+  await fetchQuestions()
+  await fetchProgress()
 })
 
 async function onQuestionsUpdated() {
