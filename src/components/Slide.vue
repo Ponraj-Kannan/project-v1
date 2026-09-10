@@ -317,6 +317,8 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(['navTabChange']);
+
 const loadedQuestionData = ref(null);
 const isLoadingQuestion = ref(Boolean(props.questionSlug || props.questionId));
 
@@ -406,6 +408,7 @@ function handleScrollWheel(e) {
 
 function navigateToTab(tabName) {
   activeNavTab.value = tabName;
+  emit('navTabChange', tabName);
   if (!scrollContainerRef.value) return;
 
   let targetEl = null;
@@ -428,12 +431,18 @@ function handleScroll() {
   const editorTop = editorSectionRef.value ? editorSectionRef.value.offsetTop - 70 : 9999;
   const testsTop = testsSectionRef.value ? testsSectionRef.value.offsetTop - 70 : 9999;
 
+  let newTab = 'problem';
   if (scrollTop >= testsTop) {
-    activeNavTab.value = 'tests';
+    newTab = 'tests';
   } else if (scrollTop >= editorTop) {
-    activeNavTab.value = 'editor';
+    newTab = 'editor';
   } else {
-    activeNavTab.value = 'problem';
+    newTab = 'problem';
+  }
+
+  if (activeNavTab.value !== newTab) {
+    activeNavTab.value = newTab;
+    emit('navTabChange', newTab);
   }
 }
 
@@ -759,6 +768,12 @@ const parsedProblem = computed(() => {
     explanation,
     otherContents
   };
+});
+
+defineExpose({
+  navigateToTab,
+  activeNavTab,
+  scrollContainerRef
 });
 </script>
 

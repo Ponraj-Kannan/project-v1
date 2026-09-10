@@ -58,9 +58,21 @@
 
         <!-- Clean Section Jump Buttons -->
         <div class="deck-jump-group">
-          <button class="deck-jump-btn" @click="scrollToSection('sec-problem')">Problem</button>
-          <button class="deck-jump-btn" @click="scrollToSection('sec-compiler')">Editor</button>
-          <button class="deck-jump-btn" @click="scrollToSection('sec-testcases')">Tests</button>
+          <button 
+            class="deck-jump-btn" 
+            :class="{ 'deck-jump-btn--active': activeNavTab === 'problem' }"
+            @click="scrollToTab('problem')"
+          >Problem</button>
+          <button 
+            class="deck-jump-btn" 
+            :class="{ 'deck-jump-btn--active': activeNavTab === 'editor' }"
+            @click="scrollToTab('editor')"
+          >Editor</button>
+          <button 
+            class="deck-jump-btn" 
+            :class="{ 'deck-jump-btn--active': activeNavTab === 'tests' }"
+            @click="scrollToTab('tests')"
+          >Tests</button>
         </div>
 
         <div class="deck-nav-divider"></div>
@@ -114,7 +126,9 @@
     <!-- ── Dynamic Question Slide Rendering ─────────────────────────────── -->
     <div v-else-if="currentQuestion" class="deck-slide-frame" :key="currentQuestion.id || currentQuestionIndex">
       <Slide
+        ref="slideRef"
         :hide-top-navbar="true"
+        @nav-tab-change="handleNavTabChange"
         :question-id="currentQuestion.id"
         :question-slug="currentQuestion.slug"
         :topic="currentQuestion.topic || props.topic || 'Coding Practice'"
@@ -216,6 +230,8 @@ const userProgressMap = ref({})
 const isLoading = ref(true)
 const errorMessage = ref('')
 const isCustomModalOpen = ref(false)
+const slideRef = ref(null)
+const activeNavTab = ref('problem')
 
 const currentQuestion = computed(() => {
   if (questions.value.length === 0) return null
@@ -242,10 +258,26 @@ function getQuestionStatus(questionId) {
   return record.status || 'unattempted'
 }
 
-function scrollToSection(sectionId) {
-  const el = document.getElementById(sectionId)
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+function handleNavTabChange(tab) {
+  if (tab) {
+    activeNavTab.value = tab
+  }
+}
+
+function scrollToTab(tabName) {
+  activeNavTab.value = tabName
+  if (slideRef.value?.navigateToTab) {
+    slideRef.value.navigateToTab(tabName)
+  } else {
+    const container = document.querySelector('.edu-main-scroll')
+    const idMap = { problem: 'sec-problem', editor: 'sec-compiler', tests: 'sec-testcases' }
+    const targetEl = document.getElementById(idMap[tabName])
+    if (container && targetEl) {
+      container.scrollTo({
+        top: Math.max(0, targetEl.offsetTop - 8),
+        behavior: 'smooth'
+      })
+    }
   }
 }
 
@@ -314,6 +346,8 @@ async function fetchProgress() {
 function selectQuestion(idx) {
   if (idx >= 0 && idx < questions.value.length) {
     currentQuestionIndex.value = idx
+    activeNavTab.value = 'problem'
+    scrollToTab('problem')
   }
 }
 
@@ -329,12 +363,16 @@ function selectAndClose(idx) {
 function prevQuestion() {
   if (currentQuestionIndex.value > 0) {
     currentQuestionIndex.value--
+    activeNavTab.value = 'problem'
+    scrollToTab('problem')
   }
 }
 
 function nextQuestion() {
   if (currentQuestionIndex.value < questions.value.length - 1) {
     currentQuestionIndex.value++
+    activeNavTab.value = 'problem'
+    scrollToTab('problem')
   }
 }
 
@@ -973,6 +1011,20 @@ onUnmounted(() => {
   background: #F3CFCE;
   border-color: #F09191;
   color: #EC5353;
+}
+
+.deck-jump-btn--active {
+  background: #EC5353 !important;
+  border-color: #EC5353 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(236, 83, 83, 0.25) !important;
+}
+
+.deck-jump-btn--active:hover {
+  background: #EE7272 !important;
+  border-color: #EE7272 !important;
+  color: #ffffff !important;
 }
 
 .deck-nav-btn-group {

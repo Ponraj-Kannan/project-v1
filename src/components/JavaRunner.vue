@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 const CODE_LIBRARY = {}
@@ -185,7 +185,8 @@ const oneCompilerUrl = computed(() => {
     hideTitle: 'true',
     listenToEvents: 'true',
     codeChangeEvent: 'true',
-    fontSize: '13',
+    disableCopyPaste: 'true',
+    fontSize: '12',
   })
   if (props.hideStdin) {
     params.set('hideStdin', 'true')
@@ -277,7 +278,8 @@ const fullscreenCompilerUrl = computed(() => {
     hideTitle: 'true',
     listenToEvents: 'true',
     codeChangeEvent: 'true',
-    fontSize: '14',
+    disableCopyPaste: 'true',
+    fontSize: '12',
   })
   if (props.hideStdin) {
     params.set('hideStdin', 'true')
@@ -292,7 +294,7 @@ const fullscreenCompilerUrl = computed(() => {
 const onIframeLoad = () => {
   try {
     ocFrameRef.value?.contentWindow?.postMessage(
-      { type: 'settings', fontSize: 13 },
+      { type: 'settings', fontSize: 12 },
       '*'
     )
   } catch(e) {}
@@ -394,6 +396,53 @@ if (typeof window !== 'undefined') {
   })
 }
 
+// ── Paste Prevention & Notice ────────────────────────────────────────────────
+const showPasteNotice = ref(false)
+let pasteNoticeTimeout = null
+
+function triggerPasteBlockedNotice() {
+  showPasteNotice.value = true
+  if (pasteNoticeTimeout) clearTimeout(pasteNoticeTimeout)
+  pasteNoticeTimeout = setTimeout(() => {
+    showPasteNotice.value = false
+  }, 2500)
+}
+
+function handleWindowKeyDown(e) {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+    const active = typeof document !== 'undefined' ? document.activeElement : null
+    if (!active || active === document.body || active.tagName === 'IFRAME' || active.closest?.('.edu-editor-container, .edu-card--compiler')) {
+      e.preventDefault()
+      e.stopPropagation()
+      triggerPasteBlockedNotice()
+    }
+  }
+}
+
+function handleWindowPaste(e) {
+  const active = typeof document !== 'undefined' ? document.activeElement : null
+  if (!active || active === document.body || active.tagName === 'IFRAME' || active.closest?.('.edu-editor-container, .edu-card--compiler')) {
+    e.preventDefault()
+    e.stopPropagation()
+    triggerPasteBlockedNotice()
+  }
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('keydown', handleWindowKeyDown, true)
+    window.addEventListener('paste', handleWindowPaste, true)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('keydown', handleWindowKeyDown, true)
+    window.removeEventListener('paste', handleWindowPaste, true)
+  }
+  if (pasteNoticeTimeout) clearTimeout(pasteNoticeTimeout)
+})
+
 defineExpose({
   getCode: () => visualizerCode.value || '',
   getLanguage: () => activeLang.value || props.language
@@ -401,7 +450,17 @@ defineExpose({
 </script>
 
 <template style="width:100%; height:100%;">
-  <div class="edu-editor-container">
+  <div class="edu-editor-container" @paste.prevent.stop="triggerPasteBlockedNotice">
+    <!-- Paste Disabled Floating Notice -->
+    <transition name="edu-toast-pop">
+      <div v-if="showPasteNotice" class="edu-paste-notice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="edu-paste-notice-icon">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+        </svg>
+        <span>Pasting is disabled. Please type the code manually.</span>
+      </div>
+    </transition>
     <!-- ── Professional Pastel Editor Header ───────────────────────────── -->
     <div class="edu-editor-header">
       <div class="edu-editor-left"></div>
@@ -770,20 +829,62 @@ defineExpose({
   height: 10px;
 }
 
-/* ── Editor Frame ────────────────────────────────────────────────────── */
+/* ── Editor Frame (Proportionally scaled to match question description font size) ── */
 .edu-editor-frame-wrap {
   flex: 1;
   width: 100%;
   height: calc(100% - 26px);
   position: relative;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .edu-editor-frame {
-  width: 100%;
-  height: 100%;
+  width: 114.5%;
+  height: 114.5%;
+  transform: scale(0.873);
+  transform-origin: 0 0;
   border: none;
   display: block;
+}
+
+.edu-paste-notice {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  z-index: 999;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.edu-paste-notice-icon {
+  width: 14px;
+  height: 14px;
+  color: #f87171;
+  flex-shrink: 0;
+}
+
+.edu-toast-pop-enter-active,
+.edu-toast-pop-leave-active {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.edu-toast-pop-enter-from,
+.edu-toast-pop-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -8px);
 }
 
 /* ── Modals ──────────────────────────────────────────────────────────── */
